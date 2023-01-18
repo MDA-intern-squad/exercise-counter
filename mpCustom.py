@@ -13,6 +13,7 @@ import sys
 import tqdm
 from mediapipe.python.solutions import drawing_utils as mp_drawing
 from mediapipe.python.solutions import pose as mp_pose
+import time
 
 
 def show_image(img, figsize=(10, 10)):
@@ -58,7 +59,8 @@ class FullBodyPoseEmbedder(object):
             (M, 3)과 같은 형상의 Pose Embedding이 있는 Numpy 배열을 반환합니다.
             여기서 'M은' `_get_pose_distance_embedding` 에서 정의된 Pairwisde Distances의 개수입니다.
         """
-        assert landmarks.shape[0] == len(self._landmark_names), '예외되지 않은 랜드마크 번호: {}'.format(landmarks.shape[0])
+        assert landmarks.shape[0] == len(
+            self._landmark_names), '예외되지 않은 랜드마크 번호: {}'.format(landmarks.shape[0])
 
         # 포즈의 랜드마크 얻기
         landmarks = np.copy(landmarks)
@@ -111,7 +113,8 @@ class FullBodyPoseEmbedder(object):
 
         # 어깨의 중심
         left_shoulder = landmarks[self._landmark_names.index('left_shoulder')]
-        right_shoulder = landmarks[self._landmark_names.index('right_shoulder')]
+        right_shoulder = landmarks[self._landmark_names.index(
+            'right_shoulder')]
         shoulders = (left_shoulder + right_shoulder) * 0.5
 
         # Torso size as the minimum body size.
@@ -305,7 +308,8 @@ class PoseClassifier(object):
         self._top_n_by_mean_distance = top_n_by_mean_distance
         self._axes_weights = axes_weights
 
-        self._pose_samples = self._load_pose_samples(pose_samples_folder, file_extension, file_separator, n_landmarks, n_dimensions, pose_embedder)
+        self._pose_samples = self._load_pose_samples(
+            pose_samples_folder, file_extension, file_separator, n_landmarks, n_dimensions, pose_embedder)
 
     def _load_pose_samples(self, pose_samples_folder: str, file_extension: str, file_separator: str, n_landmarks: int, n_dimensions: int, pose_embedder: FullBodyPoseEmbedder) -> list[PoseSample]:
         """주어진 폴더로부터 포즈 샘플을 가져옵니다.
@@ -323,7 +327,8 @@ class PoseClassifier(object):
             ...
         """
         # 폴더 내의 각 파일은 하나의 포즈 클래스를 나타낸다.
-        file_names = [name for name in os.listdir(pose_samples_folder) if name.endswith(file_extension)]
+        file_names = [name for name in os.listdir(
+            pose_samples_folder) if name.endswith(file_extension)]
 
         pose_samples = []
         for file_name in file_names:
@@ -334,8 +339,10 @@ class PoseClassifier(object):
             with open(os.path.join(pose_samples_folder, file_name)) as csv_file:
                 csv_reader = csv.reader(csv_file, delimiter=file_separator)
                 for row in csv_reader:
-                    assert len(row) == n_landmarks * n_dimensions + 1, 'Wrong number of values: {}'.format(len(row))
-                    landmarks = np.array(row[1:], np.float32).reshape([n_landmarks, n_dimensions])
+                    assert len(row) == n_landmarks * n_dimensions + \
+                        1, 'Wrong number of values: {}'.format(len(row))
+                    landmarks = np.array(row[1:], np.float32).reshape(
+                        [n_landmarks, n_dimensions])
                     pose_samples.append(
                         PoseSample(
                             name=row[0],
@@ -355,11 +362,13 @@ class PoseClassifier(object):
             # 대상에 가장 가까운 포즈를 찾는다.
             pose_landmarks = sample.landmarks.copy()
             pose_classification = self.__call__(pose_landmarks)
-            class_names = [class_name for class_name, count in pose_classification.items() if count == max(pose_classification.values())]
+            class_names = [class_name for class_name, count in pose_classification.items(
+            ) if count == max(pose_classification.values())]
 
             # 가장 가까운 포즈의 클래스가 다르거나 둘 이상의 포즈 클래스가 가장 가까운 포즈로 탐지된 경우 표본이 특이치(outlier)이다.
             if sample.class_name not in class_names or len(class_names) != 1:
-                outliers.append(PoseSampleOutlier(sample, class_names, pose_classification))
+                outliers.append(PoseSampleOutlier(
+                    sample, class_names, pose_classification))
 
         return outliers
 
@@ -383,11 +392,13 @@ class PoseClassifier(object):
                 }
         """
         # 제공된 포즈와 대상 포즈의 모양이 동일한지 확인한다.
-        assert pose_landmarks.shape == (self._n_landmarks, self._n_dimensions), 'Unexpected shape: {}'.format(pose_landmarks.shape)
+        assert pose_landmarks.shape == (
+            self._n_landmarks, self._n_dimensions), 'Unexpected shape: {}'.format(pose_landmarks.shape)
 
         # 포즈 임베딩을 얻는다.
         pose_embedding = self._pose_embedder(pose_landmarks)
-        flipped_pose_embedding = self._pose_embedder(pose_landmarks * np.array([-1, 1, 1]))
+        flipped_pose_embedding = self._pose_embedder(
+            pose_landmarks * np.array([-1, 1, 1]))
 
         # 최대 거리로 분류한다.
         #
@@ -396,8 +407,10 @@ class PoseClassifier(object):
         max_dist_heap = []
         for sample_idx, sample in enumerate(self._pose_samples):
             max_dist = min(
-                np.max(np.abs(sample.embedding - pose_embedding) * self._axes_weights),
-                np.max(np.abs(sample.embedding - flipped_pose_embedding) * self._axes_weights)
+                np.max(np.abs(sample.embedding - pose_embedding)
+                       * self._axes_weights),
+                np.max(np.abs(sample.embedding - flipped_pose_embedding)
+                       * self._axes_weights)
             )
             max_dist_heap.append([max_dist, sample_idx])
 
@@ -411,8 +424,10 @@ class PoseClassifier(object):
         for _, sample_idx in max_dist_heap:
             sample = self._pose_samples[sample_idx]
             mean_dist = min(
-                np.mean(np.abs(sample.embedding - pose_embedding) * self._axes_weights),
-                np.mean(np.abs(sample.embedding - flipped_pose_embedding) * self._axes_weights)
+                np.mean(np.abs(sample.embedding - pose_embedding)
+                        * self._axes_weights),
+                np.mean(np.abs(sample.embedding - flipped_pose_embedding)
+                        * self._axes_weights)
             )
             mean_dist_heap.append([mean_dist, sample_idx])
 
@@ -420,8 +435,10 @@ class PoseClassifier(object):
         mean_dist_heap = mean_dist_heap[:self._top_n_by_mean_distance]
 
         # Collect results into map: (class_name -> n_samples)
-        class_names = [self._pose_samples[sample_idx].class_name for _, sample_idx in mean_dist_heap]
-        result = { class_name: class_names.count(class_name) for class_name in set(class_names) }
+        class_names = [
+            self._pose_samples[sample_idx].class_name for _, sample_idx in mean_dist_heap]
+        result = {class_name: class_names.count(
+            class_name) for class_name in set(class_names)}
 
         return result
 
@@ -461,7 +478,8 @@ class EMADictSmoothing(object):
         self._data_in_window = self._data_in_window[:self._window_size]
 
         # 모든 키들을 얻는다.
-        keys = set([key for data in self._data_in_window for key, _ in data.items()])
+        keys = set(
+            [key for data in self._data_in_window for key, _ in data.items()])
 
         # 부드럽게 한 데이터를 얻는다.
         smoothed_data = dict()
@@ -580,9 +598,9 @@ class PoseClassificationVisualizer(object):
     def __call__(self, frame, pose_classification, pose_classification_filtered, repetitions_count):
         """주어진 프레임까지 포즈 분류 및 카운터를 렌더합니다."""
         # classification 기록 확장
-        self._pose_classification_history.append(pose_classification)
-        self._pose_classification_filtered_history.append(
-            pose_classification_filtered)
+        # self._pose_classification_history.append(pose_classification)
+        # self._pose_classification_filtered_history.append(
+        #     pose_classification_filtered)
 
         # classification plot과 counter가 있는 프레임 출력
         output_img = Image.fromarray(frame)
@@ -591,16 +609,16 @@ class PoseClassificationVisualizer(object):
         output_height = output_img.size[1]
 
         # plot 그리기
-        img = self._plot_classification_history(output_width, output_height)
-        img.thumbnail((int(output_width * self._plot_max_width),
-                       int(output_height * self._plot_max_height)),
-                      Image.ANTIALIAS)
-        output_img.paste(
-            img, (
-                int(output_width * self._plot_location_x),
-                int(output_height * self._plot_location_y)
-            )
-        )
+        # img = self._plot_classification_history(output_width, output_height)
+        # img.thumbnail((int(output_width * self._plot_max_width),
+        #                int(output_height * self._plot_max_height)),
+        #               Image.ANTIALIAS)
+        # output_img.paste(
+        #     img, (
+        #         int(output_width * self._plot_location_x),
+        #         int(output_height * self._plot_location_y)
+        #     )
+        # )
 
         # count 그리기
         output_img_draw = ImageDraw.Draw(output_img)
@@ -636,7 +654,7 @@ class PoseClassificationVisualizer(object):
         plt.xlabel('Frame')
         plt.ylabel('Confidence')
         plt.title('Classification history for `{}`'.format(self._class_name))
-        plt.legend(loc='upper right')
+        # plt.legend(loc='upper right')
 
         if self._plot_y_max is not None:
             plt.ylim(top=self._plot_y_max)
@@ -875,3 +893,17 @@ class BootstrapHelper(object):
                 )
                 if not n.startswith('.')])
             print('  {}: {}'.format(pose_class_name, n_images))
+
+
+class Performance:
+    def __init__(self) -> None:
+        self.time = 0
+
+    def setStartPoint(self) -> None:
+        self.time = time.time()
+
+    def getEndPoint(self) -> float:
+        return time.time() - self.time
+
+    def printEndPoint(self) -> None:
+        print("WorkingTime: {} ms".format(self.getEndPoint() * 1000))
