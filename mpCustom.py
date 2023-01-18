@@ -550,8 +550,7 @@ class RepetitionCounter(object):
             self._pose_entered = pose_confidence > self._enter_threshold
             return self._n_repeats
 
-        # If we were in the pose and are exiting it, then increase the counter and
-        # update the state.
+        # 포즈를 취한 후 포즈를 마치면 카운터를 늘리고 상태를 업데이트합니다.
         if pose_confidence < self._exit_threshold:
             self._n_repeats += 1
             self._pose_entered = False
