@@ -4,8 +4,22 @@ import sys
 import tqdm
 from mediapipe.python.solutions import drawing_utils as mp_drawing
 from mediapipe.python.solutions import pose as mp_pose
-
+import time
 import mpCustom as ct
+
+
+class Performance:
+    def __init__(self) -> None:
+        self.time = 0
+
+    def setStartPoint(self) -> None:
+        self.time = time.time()
+
+    def getEndPoint(self) -> float:
+        return time.time() - self.time
+
+    def printEndPoint(self) -> None:
+        print("WorkingTime: {} ms".format(self.getEndPoint() * 1000))
 
 
 dirName = sys.argv[1]
@@ -14,14 +28,16 @@ out_video_path = f'./data/{dirName}/video/result.mp4'
 pose_samples_folder = f'./data/{dirName}/dist'
 class_name = 'up'
 
-video_cap = cv2.VideoCapture(video_path)
-video_n_frames = video_cap.get(cv2.CAP_PROP_FRAME_COUNT)
+video_cap = cv2.VideoCapture(0)
+# video_n_frames = video_cap.get(cv2.CAP_PROP_FRAME_COUNT)
+performance = Performance()
+video_n_frames = 1000
 video_fps = video_cap.get(cv2.CAP_PROP_FPS)
 video_width = int(video_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 video_height = int(video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 # ==================== 초기화 ==================== #
-pose_tracker = mp_pose.Pose()
+pose_tracker = mp_pose.Pose(model_complexity=1)
 pose_embedder = ct.FullBodyPoseEmbedder()
 pose_classifier = ct.PoseClassifier(
     pose_samples_folder=pose_samples_folder,
@@ -47,6 +63,7 @@ output_frame = None
 with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
     while True:
         # Get next frame of the video.
+
         success, input_frame = video_cap.read()
         if not success:
             break
@@ -88,19 +105,22 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
             repetitions_count = repetition_counter.n_repeats
 
         # Draw classification plot and repetition counter.
+        performance.setStartPoint()
         output_frame = pose_classification_visualizer(
             frame=output_frame,
             pose_classification=pose_classification,
             pose_classification_filtered=pose_classification_filtered,
             repetitions_count=repetitions_count)
-
+        # performance.printEndPoint()
         # Save the output frame.
-        out_video.write(cv2.cvtColor(
-            np.array(output_frame), cv2.COLOR_RGB2BGR))
-        cv2.imshow('12345', cv2.cvtColor(
-            np.array(output_frame), cv2.COLOR_RGB2BGR))
+
+        convert = cv2.cvtColor(np.array(output_frame))
+        out_video.write(convert, cv2.COLOR_RGB2BGR)
+        cv2.imshow('12345', cv2.cvtColor(convert, cv2.COLOR_RGB2BGR))
+        cv2.waitKey(1)
+
         frame_idx += 1
-        pbar.update()
+        # pbar.update()
 
 
 # 비디오와 mediapipe의 pose모델을 닫는다
