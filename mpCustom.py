@@ -559,7 +559,7 @@ class RepetitionCounter(object):
 
 
 class PoseClassificationVisualizer(object):
-    """Keeps track of claassifcations for every frame and renders them."""
+    """모든 프레임에 대한 분류를 추적하고 렌더링합니다."""
 
     def __init__(self,
                  class_name,
@@ -674,7 +674,7 @@ class PoseClassificationVisualizer(object):
 
 
 class BootstrapHelper(object):
-    """Helps to bootstrap images and filter pose samples for classification."""
+    """분류를 위해 이미지를 부트스트랩하고 포즈 샘플을 필터링하는 데 도움을 줍니다."""
 
     def __init__(self,
                  images_in_folder,
@@ -684,100 +684,84 @@ class BootstrapHelper(object):
         self._images_out_folder = images_out_folder
         self._csvs_out_folder = csvs_out_folder
 
-        # Get list of pose classes and print image statistics.
+        # 포즈 클래스 목록을 가져오고 이미지 통계를 출력한다.
         self._pose_class_names = sorted([n for n in os.listdir(
             self._images_in_folder) if not n.startswith('.')])
 
     def bootstrap(self, per_pose_class_limit=None):
-        """Bootstraps images in a given folder.
+        """주어진 폴더에 포함된 부트스트랩 이미지
 
-        Required image in folder (same use for image out folder):
-          pushups_up/
-            image_001.jpg
-            image_002.jpg
+        폴더 내에 요구되는 이미지 예시 ( 이미지 out 폴더와 동일한 사용 ):
+            pushups_up/
+                image_001.jpg
+                image_002.jpg
+                ...
+            pushups_down/
+                image_001.jpg
+                image_002.jpg
+                ...
             ...
-          pushups_down/
-            image_001.jpg
-            image_002.jpg
-            ...
-          ...
 
-        Produced CSVs out folder:
-          pushups_up.csv
-          pushups_down.csv
+        생산되는 CSV 출력 폴더:
+            pushups_up.csv
+            pushups_down.csv
 
-        Produced CSV structure with pose 3D landmarks:
-          sample_00001,x1,y1,z1,x2,y2,z2,....
-          sample_00002,x1,y1,z1,x2,y2,z2,....
+        포즈 3D 랜드마크를 사용한 CSV 구조 제작 예시:
+            sample_00001,x1,y1,z1,x2,y2,z2,....
+            sample_00002,x1,y1,z1,x2,y2,z2,....
         """
-        # Create output folder for CVSs.
+        # CSV를 위한 폴더를 만든다.
         if not os.path.exists(self._csvs_out_folder):
             os.makedirs(self._csvs_out_folder)
 
         for pose_class_name in self._pose_class_names:
             print('Bootstrapping ', pose_class_name, file=sys.stderr)
 
-            # Paths for the pose class.
-            images_in_folder = os.path.join(
-                self._images_in_folder, pose_class_name)
-            images_out_folder = os.path.join(
-                self._images_out_folder, pose_class_name)
-            csv_out_path = os.path.join(
-                self._csvs_out_folder, pose_class_name + '.csv')
+            # 포즈 클래스의 경로
+            images_in_folder = os.path.join(self._images_in_folder, pose_class_name)
+            images_out_folder = os.path.join(self._images_out_folder, pose_class_name)
+            csv_out_path = os.path.join(self._csvs_out_folder, pose_class_name + '.csv')
             if not os.path.exists(images_out_folder):
                 os.makedirs(images_out_folder)
 
             with open(csv_out_path, 'w') as csv_out_file:
-                csv_out_writer = csv.writer(
-                    csv_out_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-                # Get list of images.
-                image_names = sorted([n for n in os.listdir(
-                    images_in_folder) if not n.startswith('.')])
+                csv_out_writer = csv.writer(csv_out_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+                # 이미지들의 리스트를 얻는다.
+                image_names = sorted([n for n in os.listdir(images_in_folder) if not n.startswith('.')])
                 if per_pose_class_limit is not None:
                     image_names = image_names[:per_pose_class_limit]
 
-                # Bootstrap every image.
+                # 모든 이미지를 Bootstrap 한다.
                 for image_name in tqdm.tqdm(image_names):
-                    # Load image.
-                    input_frame = cv2.imread(
-                        os.path.join(images_in_folder, image_name))
+                    # 이미지를 불러온다.
+                    input_frame = cv2.imread(os.path.join(images_in_folder, image_name))
                     input_frame = cv2.cvtColor(input_frame, cv2.COLOR_BGR2RGB)
 
-                    # Initialize fresh pose tracker and run it.
+                    # 새 포즈 트래커를 초기화하고 실행한다.
                     with mp_pose.Pose(model_complexity=2) as pose_tracker:
                         result = pose_tracker.process(image=input_frame)
                         pose_landmarks = result.pose_landmarks
 
-                    # Save image with pose prediction (if pose was detected).
+                    # 포즈 예측을 사용하여 이미지를 저장한다. ( 포즈가 감지된 경우 )
                     output_frame = input_frame.copy()
                     if pose_landmarks is not None:
-                        mp_drawing.draw_landmarks(
-                            image=output_frame,
-                            landmark_list=pose_landmarks,
-                            connections=mp_pose.POSE_CONNECTIONS)
-                    output_frame = cv2.cvtColor(
-                        output_frame, cv2.COLOR_RGB2BGR)
-                    cv2.imwrite(os.path.join(
-                        images_out_folder, image_name), output_frame)
+                        mp_drawing.draw_landmarks(image=output_frame, landmark_list=pose_landmarks, connections=mp_pose.POSE_CONNECTIONS)
+                    output_frame = cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR)
+                    cv2.imwrite(os.path.join(images_out_folder, image_name), output_frame)
 
-                    # Save landmarks if pose was detected.
+                    # 포즈가 감지된 경우 랜드마크를 저장한다.
                     if pose_landmarks is not None:
-                        # Get landmarks.
+                        # 랜드마크를 얻는다.
                         frame_height, frame_width = output_frame.shape[0], output_frame.shape[1]
-                        pose_landmarks = np.array(
-                            [[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width]
-                             for lmk in pose_landmarks.landmark],
-                            dtype=np.float32)
-                        assert pose_landmarks.shape == (
-                            33, 3), 'Unexpected landmarks shape: {}'.format(pose_landmarks.shape)
-                        csv_out_writer.writerow(
-                            [image_name] + pose_landmarks.flatten().astype(np.str_).tolist())
+                        pose_landmarks = np.array([[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width] for lmk in pose_landmarks.landmark], dtype=np.float32)
 
-                    # Draw XZ projection and concatenate with the image.
-                    projection_xz = self._draw_xz_projection(
-                        output_frame=output_frame, pose_landmarks=pose_landmarks)
-                    output_frame = np.concatenate(
-                        (output_frame, projection_xz), axis=1)
+                        assert pose_landmarks.shape == (33, 3), 'Unexpected landmarks shape: {}'.format(pose_landmarks.shape)
+
+                        csv_out_writer.writerow([image_name] + pose_landmarks.flatten().astype(np.str_).tolist())
+
+                    # XZ 투영(projection) 을 그려 이미지와 연결(concatenate)한다.
+                    projection_xz = self._draw_xz_projection(output_frame=output_frame, pose_landmarks=pose_landmarks)
+                    output_frame = np.concatenate((output_frame, projection_xz), axis=1)
 
     def _draw_xz_projection(self, output_frame, pose_landmarks, r=0.5, color='red'):
         frame_height, frame_width = output_frame.shape[0], output_frame.shape[1]
@@ -786,12 +770,12 @@ class BootstrapHelper(object):
         if pose_landmarks is None:
             return np.asarray(img)
 
-        # Scale radius according to the image width.
+        # 영상 너비에 따라 반지름을 조정한다.
         r *= frame_width * 0.01
 
         draw = ImageDraw.Draw(img)
         for idx_1, idx_2 in mp_pose.POSE_CONNECTIONS:
-            # Flip Z and move hips center to the center of the image.
+            # Z를 뒤집고 힙을 영상의 중앙으로 이동시킵니다.
             x1, y1, z1 = pose_landmarks[idx_1] * \
                 [1, 1, -1] + [0, 0, frame_height * 0.5]
             x2, y2, z2 = pose_landmarks[idx_2] * \
@@ -804,31 +788,28 @@ class BootstrapHelper(object):
         return np.asarray(img)
 
     def align_images_and_csvs(self, print_removed_items=False):
-        """Makes sure that image folders and CSVs have the same sample.
+        """이미지 폴더와 CSV의 샘플이 동일한지 확인합니다.
 
-        Leaves only intersetion of samples in both image folders and CSVs.
+        이미지 폴더와 CSV 모두에 샘플의 교차점만 남깁니다.
         """
         for pose_class_name in self._pose_class_names:
-            # Paths for the pose class.
-            images_out_folder = os.path.join(
-                self._images_out_folder, pose_class_name)
-            csv_out_path = os.path.join(
-                self._csvs_out_folder, pose_class_name + '.csv')
+            # 포즈 클래스의 경로
+            images_out_folder = os.path.join(self._images_out_folder, pose_class_name)
+            csv_out_path = os.path.join(self._csvs_out_folder, pose_class_name + '.csv')
 
-            # Read CSV into memory.
+            # CSV를 메모리로 읽는다. ( 원문 : Read CSV into memory )
             rows = []
             with open(csv_out_path) as csv_out_file:
                 csv_out_reader = csv.reader(csv_out_file, delimiter=',')
                 for row in csv_out_reader:
                     rows.append(row)
 
-            # Image names left in CSV.
+            # CSV 에 남아 있는 이미지 이름을 저장할 배열
             image_names_in_csv = []
 
-            # Re-write the CSV removing lines without corresponding images.
+            # 해당 영상 없이 CSV 제거 라인을 재작성한다.
             with open(csv_out_path, 'w') as csv_out_file:
-                csv_out_writer = csv.writer(
-                    csv_out_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+                csv_out_writer = csv.writer(csv_out_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
                 for row in rows:
                     image_name = row[0]
                     image_path = os.path.join(images_out_folder, image_name)
@@ -836,9 +817,9 @@ class BootstrapHelper(object):
                         image_names_in_csv.append(image_name)
                         csv_out_writer.writerow(row)
                     elif print_removed_items:
-                        print('Removed image from CSV: ', image_path)
+                        print(f'Removed image from CSV: {image_path}')
 
-            # Remove images without corresponding line in CSV.
+            # CSV에서 해당하는 라인이 없는 이미지를 제거한다.
             for image_name in os.listdir(images_out_folder):
                 if image_name not in image_names_in_csv:
                     image_path = os.path.join(images_out_folder, image_name)
@@ -847,14 +828,12 @@ class BootstrapHelper(object):
                         print('Removed image from folder: ', image_path)
 
     def analyze_outliers(self, outliers):
-        """Classifies each sample agains all other to find outliers.
+        """이상치를 찾기 위해 각 표본을 다른 모든 표본과 비교하여 분류합니다.
 
-        If sample is classified differrrently than the original class - it sould
-        either be deleted or more similar samples should be aadded.
+        샘플이 원래 클래스와 다르게 분류된 경우 -> 삭제하거나 유사한 샘플을 추가해야 합니다.
         """
         for outlier in outliers:
-            image_path = os.path.join(
-                self._images_out_folder, outlier.sample.class_name, outlier.sample.name)
+            image_path = os.path.join(self._images_out_folder, outlier.sample.class_name, outlier.sample.name)
 
             print('Outlier')
             print('  sample path =    ', image_path)
@@ -867,30 +846,23 @@ class BootstrapHelper(object):
             show_image(img, figsize=(20, 20))
 
     def remove_outliers(self, outliers):
-        """Removes outliers from the image folders."""
+        """이미지 폴더에서 이상치를 제거합니다."""
         for outlier in outliers:
-            image_path = os.path.join(
-                self._images_out_folder, outlier.sample.class_name, outlier.sample.name)
+            image_path = os.path.join(self._images_out_folder, outlier.sample.class_name, outlier.sample.name)
             os.remove(image_path)
 
     def print_images_in_statistics(self):
-        """Prints statistics from the input image folder."""
-        self._print_images_statistics(
-            self._images_in_folder, self._pose_class_names)
+        """입력 이미지 폴더에서 통계를 출력합니다."""
+        self._print_images_statistics(self._images_in_folder, self._pose_class_names)
 
     def print_images_out_statistics(self):
-        """Prints statistics from the output image folder."""
-        self._print_images_statistics(
-            self._images_out_folder, self._pose_class_names)
+        """출력 이미지 폴더에서 통계를 출력합니다."""
+        self._print_images_statistics(self._images_out_folder, self._pose_class_names)
 
     def _print_images_statistics(self, images_folder, pose_class_names):
         print('Number of images per pose class:')
         for pose_class_name in pose_class_names:
-            n_images = len([
-                n for n in os.listdir(
-                    os.path.join(images_folder, pose_class_name)
-                )
-                if not n.startswith('.')])
+            n_images = len([n for n in os.listdir(os.path.join(images_folder, pose_class_name)) if not n.startswith('.')])
             print('  {}: {}'.format(pose_class_name, n_images))
 
 
