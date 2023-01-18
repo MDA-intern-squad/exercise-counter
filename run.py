@@ -7,26 +7,38 @@ from mediapipe.python.solutions import pose as mp_pose
 import mpCustom as ct
 import argparse
 
-parser = argparse.ArgumentParser(description='Process some integers.')
-parser.add_argument('--cam', help='웹캠을 테스트 비디오 대신 이용합니다')
-parser.add_argument(
-    '--clearn', help='sum the integers (default: find the max)')
+parser = argparse.ArgumentParser()
+parser.add_argument('dirName')
+parser.add_argument('--cam', '-c', help='웹캠을 테스트 비디오 대신 이용합니다',
+                    action='store_true', default=False)
+parser.add_argument('--save', '-s', help='비디오를 저장합니다',
+                    action='store_true', default=False)
+parser.add_argument('--ui', '-u', help='UI를 사용합니다',
+                    action='store_true', default=False)
+parser.add_argument('--performance', '-pf', help='퍼포먼스를 출력합니다',
+                    action='store_true', default=False)
+parser.add_argument('--progress', '-pg', help='프로그래스바를 출력합니다',
+                    action='store_true', default=False)
+args = parser.parse_args()
 
-dirName = sys.argv[1]
+dirName = args.dirName
+
 video_path = f'./data/{dirName}/video/test.mp4'
 out_video_path = f'./data/{dirName}/video/result.mp4'
 pose_samples_folder = f'./data/{dirName}/dist'
 class_name = 'up'
 
-video_cap = cv2.VideoCapture(0)
-# video_n_frames = video_cap.get(cv2.CAP_PROP_FRAME_COUNT)
-performance = ct.Performance()
-video_n_frames = 1000
+video_cap = cv2.VideoCapture(0 if args.cam else video_path)
+video_cap.set(cv2.CAP_PROP_FPS, 60)
+video_n_frames = video_cap.get(cv2.CAP_PROP_FRAME_COUNT)
 video_fps = video_cap.get(cv2.CAP_PROP_FPS)
 video_width = int(video_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 video_height = int(video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
+# print(video_fps)
+
 # ==================== 초기화 ==================== #
+performance = ct.Performance()
 pose_tracker = mp_pose.Pose(model_complexity=0)
 pose_embedder = ct.FullBodyPoseEmbedder()
 pose_classifier = ct.PoseClassifier(
@@ -102,16 +114,19 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
             pose_classification_filtered=pose_classification_filtered,
             repetitions_count=repetitions_count)
 
-        # Save the output frame.
-
-        convert = cv2.cvtColor(np.array(output_frame), cv2.COLOR_RGB2BGR)
-        out_video.write(convert)
-        cv2.imshow('12345', convert)
-        cv2.waitKey(1)
+        if args.save or args.ui:
+            convert = cv2.cvtColor(np.array(output_frame), cv2.COLOR_RGB2BGR)
+        if args.save:
+            out_video.write(convert)
+        if args.ui:
+            cv2.imshow('12345', convert)
+            cv2.waitKey(1)
+        if args.progress:
+            pbar.update()
+        if args.performance:
+            performance.printEndPoint()
 
         frame_idx += 1
-        # pbar.update()
-        performance.printEndPoint()
 
 # 비디오와 mediapipe의 pose모델을 닫는다
 out_video.release()
