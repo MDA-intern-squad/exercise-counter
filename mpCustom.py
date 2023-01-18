@@ -22,9 +22,9 @@ def show_image(img, figsize=(10, 10)):
 
 
 class FullBodyPoseEmbedder(object):
-    """Converts 3D pose landmarks into 3D embedding."""
+    """3D 포즈 랜드마크를 3D 포즈 임베딩으로 변환합니다."""
 
-    def __init__(self, torso_size_multiplier=2.5):
+    def __init__(self, torso_size_multiplier: float = 2.5):
         # Multiplier to apply to the torso to get minimal body size.
         self._torso_size_multiplier = torso_size_multiplier
 
@@ -48,72 +48,70 @@ class FullBodyPoseEmbedder(object):
             'left_foot_index', 'right_foot_index',
         ]
 
-    def __call__(self, landmarks):
-        """Normalizes pose landmarks and converts to embedding
+    def __call__(self, landmarks: np.ndarray):
+        """포즈의 랜드마크를 표준화 하고 Embedding으로 변환합니다.
 
         Args:
-          landmarks - NumPy array with 3D landmarks of shape (N, 3).
+            landmarks - (N, 3)과 같은 형상의 3D 랜드마크가 있는 Numpy 배열을 인자로 받습니다.
 
         Result:
-          Numpy array with pose embedding of shape (M, 3) where `M` is the number of
-          pairwise distances defined in `_get_pose_distance_embedding`.
+            (M, 3)과 같은 형상의 Pose Embedding이 있는 Numpy 배열을 반환합니다.
+            여기서 'M은' `_get_pose_distance_embedding` 에서 정의된 Pairwisde Distances의 개수입니다.
         """
-        assert landmarks.shape[0] == len(
-            self._landmark_names), 'Unexpected number of landmarks: {}'.format(landmarks.shape[0])
+        assert landmarks.shape[0] == len(self._landmark_names), '예외되지 않은 랜드마크 번호: {}'.format(landmarks.shape[0])
 
-        # Get pose landmarks.
+        # 포즈의 랜드마크 얻기
         landmarks = np.copy(landmarks)
 
-        # Normalize landmarks.
+        # 랜드마크 표준화
         landmarks = self._normalize_pose_landmarks(landmarks)
 
-        # Get embedding.
+        # 임베딩 얻기
         embedding = self._get_pose_distance_embedding(landmarks)
 
         return embedding
 
-    def _normalize_pose_landmarks(self, landmarks):
-        """Normalizes landmarks translation and scale."""
+    def _normalize_pose_landmarks(self, landmarks: np.ndarray) -> np.ndarray:
+        """랜드마크의 translation 및 scale을 표준화합니다."""
         landmarks = np.copy(landmarks)
 
-        # Normalize translation.
+        # translation 표준화.
         pose_center = self._get_pose_center(landmarks)
         landmarks -= pose_center
 
-        # Normalize scale.
+        # scale 표준화
         pose_size = self._get_pose_size(landmarks, self._torso_size_multiplier)
         landmarks /= pose_size
-        # Multiplication by 100 is not required, but makes it eaasier to debug.
+        # 굳이 100을 곱할 필요는 없으나, 디버깅하기 더 쉬워진다. ( 배열 내 모든 원소에 100을 곱함. )
         landmarks *= 100
 
         return landmarks
 
-    def _get_pose_center(self, landmarks):
+    def _get_pose_center(self, landmarks: np.ndarray) -> np.ndarray:
         """Calculates pose center as point between hips."""
         left_hip = landmarks[self._landmark_names.index('left_hip')]
         right_hip = landmarks[self._landmark_names.index('right_hip')]
         center = (left_hip + right_hip) * 0.5
         return center
 
-    def _get_pose_size(self, landmarks, torso_size_multiplier):
+    def _get_pose_size(self, landmarks: np.ndarray, torso_size_multiplier: float) -> np.float64:
         """Calculates pose size.
 
         It is the maximum of two values:
           * Torso size multiplied by `torso_size_multiplier`
           * Maximum distance from pose center to any pose landmark
         """
-        # This approach uses only 2D landmarks to compute pose size.
+        # 이 접근법은 포즈의 크기를 계산하기 위해 2D 랜드마크만 사용함
         landmarks = landmarks[:, :2]
 
-        # Hips center.
+        # 엉덩이의 중심
         left_hip = landmarks[self._landmark_names.index('left_hip')]
         right_hip = landmarks[self._landmark_names.index('right_hip')]
         hips = (left_hip + right_hip) * 0.5
 
-        # Shoulders center.
+        # 어깨의 중심
         left_shoulder = landmarks[self._landmark_names.index('left_shoulder')]
-        right_shoulder = landmarks[self._landmark_names.index(
-            'right_shoulder')]
+        right_shoulder = landmarks[self._landmark_names.index('right_shoulder')]
         shoulders = (left_shoulder + right_shoulder) * 0.5
 
         # Torso size as the minimum body size.
@@ -125,7 +123,7 @@ class FullBodyPoseEmbedder(object):
 
         return max(torso_size * torso_size_multiplier, max_dist)
 
-    def _get_pose_distance_embedding(self, landmarks):
+    def _get_pose_distance_embedding(self, landmarks: np.ndarray) -> np.ndarray:
         """Converts pose landmarks into 3D embedding.
 
         We use several pairwise 3D distances to form pose embedding. All distances
@@ -140,63 +138,118 @@ class FullBodyPoseEmbedder(object):
           pairwise distances.
         """
         embedding = np.array([
+
             # One joint.
 
+
             self._get_distance(
-                self._get_average_by_names(landmarks, 'left_hip', 'right_hip'),
-                self._get_average_by_names(landmarks, 'left_shoulder', 'right_shoulder')),
+                self._get_average_by_names(
+                    landmarks, 'left_hip', 'right_hip'
+                ),
+                self._get_average_by_names(
+                    landmarks, 'left_shoulder', 'right_shoulder'
+                )
+            ),
+
 
             self._get_distance_by_names(
-                landmarks, 'left_shoulder', 'left_elbow'),
+                landmarks, 'left_shoulder', 'left_elbow'
+            ),
             self._get_distance_by_names(
-                landmarks, 'right_shoulder', 'right_elbow'),
+                landmarks, 'right_shoulder', 'right_elbow'
+            ),
 
-            self._get_distance_by_names(landmarks, 'left_elbow', 'left_wrist'),
+
             self._get_distance_by_names(
-                landmarks, 'right_elbow', 'right_wrist'),
-
-            self._get_distance_by_names(landmarks, 'left_hip', 'left_knee'),
-            self._get_distance_by_names(landmarks, 'right_hip', 'right_knee'),
-
-            self._get_distance_by_names(landmarks, 'left_knee', 'left_ankle'),
+                landmarks, 'left_elbow', 'left_wrist'
+            ),
             self._get_distance_by_names(
-                landmarks, 'right_knee', 'right_ankle'),
+                landmarks, 'right_elbow', 'right_wrist'
+            ),
+
+
+            self._get_distance_by_names(
+                landmarks, 'left_hip', 'left_knee'
+            ),
+            self._get_distance_by_names(
+                landmarks, 'right_hip', 'right_knee'
+            ),
+
+
+            self._get_distance_by_names(
+                landmarks, 'left_knee', 'left_ankle'
+            ),
+            self._get_distance_by_names(
+                landmarks, 'right_knee', 'right_ankle'
+            ),
+
 
             # Two joints.
 
-            self._get_distance_by_names(
-                landmarks, 'left_shoulder', 'left_wrist'),
-            self._get_distance_by_names(
-                landmarks, 'right_shoulder', 'right_wrist'),
 
-            self._get_distance_by_names(landmarks, 'left_hip', 'left_ankle'),
-            self._get_distance_by_names(landmarks, 'right_hip', 'right_ankle'),
+            self._get_distance_by_names(
+                landmarks, 'left_shoulder', 'left_wrist'
+            ),
+            self._get_distance_by_names(
+                landmarks, 'right_shoulder', 'right_wrist'
+            ),
+
+
+            self._get_distance_by_names(
+                landmarks, 'left_hip', 'left_ankle'
+            ),
+            self._get_distance_by_names(
+                landmarks, 'right_hip', 'right_ankle'
+            ),
+
 
             # Four joints.
 
-            self._get_distance_by_names(landmarks, 'left_hip', 'left_wrist'),
-            self._get_distance_by_names(landmarks, 'right_hip', 'right_wrist'),
+
+            self._get_distance_by_names(
+                landmarks, 'left_hip', 'left_wrist'
+            ),
+            self._get_distance_by_names(
+                landmarks, 'right_hip', 'right_wrist'
+            ),
+
 
             # Five joints.
 
-            self._get_distance_by_names(
-                landmarks, 'left_shoulder', 'left_ankle'),
-            self._get_distance_by_names(
-                landmarks, 'right_shoulder', 'right_ankle'),
 
-            self._get_distance_by_names(landmarks, 'left_hip', 'left_wrist'),
-            self._get_distance_by_names(landmarks, 'right_hip', 'right_wrist'),
+            self._get_distance_by_names(
+                landmarks, 'left_shoulder', 'left_ankle'
+            ),
+            self._get_distance_by_names(
+                landmarks, 'right_shoulder', 'right_ankle'
+            ),
+
+
+            self._get_distance_by_names(
+                landmarks, 'left_hip', 'left_wrist'
+            ),
+            self._get_distance_by_names(
+                landmarks, 'right_hip', 'right_wrist'
+            ),
+
 
             # Cross body.
 
-            self._get_distance_by_names(
-                landmarks, 'left_elbow', 'right_elbow'),
-            self._get_distance_by_names(landmarks, 'left_knee', 'right_knee'),
 
             self._get_distance_by_names(
-                landmarks, 'left_wrist', 'right_wrist'),
+                landmarks, 'left_elbow', 'right_elbow'
+            ),
             self._get_distance_by_names(
-                landmarks, 'left_ankle', 'right_ankle'),
+                landmarks, 'left_knee', 'right_knee'
+            ),
+
+
+            self._get_distance_by_names(
+                landmarks, 'left_wrist', 'right_wrist'
+            ),
+            self._get_distance_by_names(
+                landmarks, 'left_ankle', 'right_ankle'
+            ),
 
             # Body bent direction.
 
@@ -210,33 +263,33 @@ class FullBodyPoseEmbedder(object):
 
         return embedding
 
-    def _get_average_by_names(self, landmarks, name_from, name_to):
+    def _get_average_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
         lmk_from = landmarks[self._landmark_names.index(name_from)]
         lmk_to = landmarks[self._landmark_names.index(name_to)]
         return (lmk_from + lmk_to) * 0.5
 
-    def _get_distance_by_names(self, landmarks, name_from, name_to):
+    def _get_distance_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str):
         lmk_from = landmarks[self._landmark_names.index(name_from)]
         lmk_to = landmarks[self._landmark_names.index(name_to)]
         return self._get_distance(lmk_from, lmk_to)
 
-    def _get_distance(self, lmk_from, lmk_to):
+    def _get_distance(self, lmk_from: np.ndarray, lmk_to: np.ndarray) -> np.ndarray:
         return lmk_to - lmk_from
 
 
 class PoseSample(object):
 
-    def __init__(self, name, landmarks, class_name, embedding):
+    def __init__(self, name: str, landmarks: np.ndarray, class_name: str, embedding: np.ndarray):
         self.name = name
         self.landmarks = landmarks
         self.class_name = class_name
-
         self.embedding = embedding
 
 
 class PoseSampleOutlier(object):
 
     def __init__(self, sample, detected_class, all_classes):
+        print(type(sample), type(detected_class), type(all_classes))
         self.sample = sample
         self.detected_class = detected_class
         self.all_classes = all_classes
@@ -245,16 +298,7 @@ class PoseSampleOutlier(object):
 class PoseClassifier(object):
     """Classifies pose landmarks."""
 
-    def __init__(self,
-                 pose_samples_folder,
-                 pose_embedder,
-                 file_extension='csv',
-                 file_separator=',',
-                 n_landmarks=33,
-                 n_dimensions=3,
-                 top_n_by_max_distance=30,
-                 top_n_by_mean_distance=10,
-                 axes_weights=(1., 1., 0.2)):
+    def __init__(self, pose_samples_folder: str, pose_embedder: FullBodyPoseEmbedder, file_extension: str = 'csv', file_separator: str = ',', n_landmarks: int = 33, n_dimensions: int = 3, top_n_by_max_distance: int = 30, top_n_by_mean_distance: int = 10, axes_weights: tuple | list = (1.0, 1.0, 0.2)) -> None:
         self._pose_embedder = pose_embedder
         self._n_landmarks = n_landmarks
         self._n_dimensions = n_dimensions
@@ -262,37 +306,25 @@ class PoseClassifier(object):
         self._top_n_by_mean_distance = top_n_by_mean_distance
         self._axes_weights = axes_weights
 
-        self._pose_samples = self._load_pose_samples(pose_samples_folder,
-                                                     file_extension,
-                                                     file_separator,
-                                                     n_landmarks,
-                                                     n_dimensions,
-                                                     pose_embedder)
+        self._pose_samples = self._load_pose_samples(pose_samples_folder, file_extension, file_separator, n_landmarks, n_dimensions, pose_embedder)
 
-    def _load_pose_samples(self,
-                           pose_samples_folder,
-                           file_extension,
-                           file_separator,
-                           n_landmarks,
-                           n_dimensions,
-                           pose_embedder):
-        """Loads pose samples from a given folder.
+    def _load_pose_samples(self, pose_samples_folder: str, file_extension: str, file_separator: str, n_landmarks: int, n_dimensions: int, pose_embedder: FullBodyPoseEmbedder) -> list[PoseSample]:
+        """주어진 폴더로부터 포즈 샘플을 가져옵니다.
 
-        Required folder structure:
-          neutral_standing.csv
-          pushups_down.csv
-          pushups_up.csv
-          squats_down.csv
-          ...
+        요구되는 파일 구조:
+            neutral_standing.csv
+            pushups_down.csv
+            pushups_up.csv
+            squats_down.csv
+            ...
 
-        Required CSV structure:
-          sample_00001,x1,y1,z1,x2,y2,z2,....
-          sample_00002,x1,y1,z1,x2,y2,z2,....
-          ...
+        요구되는 CSV 구조:
+            sample_00001,x1,y1,z1,x2,y2,z2,....
+            sample_00002,x1,y1,z1,x2,y2,z2,....
+            ...
         """
         # Each file in the folder represents one pose class.
-        file_names = [name for name in os.listdir(
-            pose_samples_folder) if name.endswith(file_extension)]
+        file_names = [name for name in os.listdir(pose_samples_folder) if name.endswith(file_extension)]
 
         pose_samples = []
         for file_name in file_names:
@@ -303,20 +335,20 @@ class PoseClassifier(object):
             with open(os.path.join(pose_samples_folder, file_name)) as csv_file:
                 csv_reader = csv.reader(csv_file, delimiter=file_separator)
                 for row in csv_reader:
-                    assert len(row) == n_landmarks * n_dimensions + \
-                        1, 'Wrong number of values: {}'.format(len(row))
-                    landmarks = np.array(row[1:], np.float32).reshape(
-                        [n_landmarks, n_dimensions])
-                    pose_samples.append(PoseSample(
-                        name=row[0],
-                        landmarks=landmarks,
-                        class_name=class_name,
-                        embedding=pose_embedder(landmarks),
-                    ))
+                    assert len(row) == n_landmarks * n_dimensions + 1, 'Wrong number of values: {}'.format(len(row))
+                    landmarks = np.array(row[1:], np.float32).reshape([n_landmarks, n_dimensions])
+                    pose_samples.append(
+                        PoseSample(
+                            name=row[0],
+                            landmarks=landmarks,
+                            class_name=class_name,
+                            embedding=pose_embedder(landmarks)
+                        )
+                    )
 
         return pose_samples
 
-    def find_pose_sample_outliers(self):
+    def find_pose_sample_outliers(self) -> list[PoseSampleOutlier]:
         """Classifies each sample against the entire database."""
         # Find outliers in target poses
         outliers = []
@@ -324,14 +356,12 @@ class PoseClassifier(object):
             # Find nearest poses for the target one.
             pose_landmarks = sample.landmarks.copy()
             pose_classification = self.__call__(pose_landmarks)
-            class_names = [class_name for class_name, count in pose_classification.items(
-            ) if count == max(pose_classification.values())]
+            class_names = [class_name for class_name, count in pose_classification.items() if count == max(pose_classification.values())]
 
             # Sample is an outlier if nearest poses have different class or more than
             # one pose class is detected as nearest.
             if sample.class_name not in class_names or len(class_names) != 1:
-                outliers.append(PoseSampleOutlier(
-                    sample, class_names, pose_classification))
+                outliers.append(PoseSampleOutlier(sample, class_names, pose_classification))
 
         return outliers
 
@@ -411,7 +441,7 @@ class PoseClassifier(object):
 class EMADictSmoothing(object):
     """Smoothes pose classification."""
 
-    def __init__(self, window_size=10, alpha=0.2):
+    def __init__(self, window_size: int = 10, alpha: float = 0.2):
         self._window_size = window_size
         self._alpha = alpha
 
@@ -459,7 +489,7 @@ class EMADictSmoothing(object):
                 top_sum += factor * value
                 bottom_sum += factor
 
-                # Update factor.
+                # factor 재갱신
                 factor *= (1.0 - self._alpha)
 
             smoothed_data[key] = top_sum / bottom_sum
