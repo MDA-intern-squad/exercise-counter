@@ -61,9 +61,12 @@ repetition_counter = ct.RepetitionCounter(
 pose_classification_visualizer = ct.PoseClassificationVisualizer(
     class_name=class_name,
     plot_x_max=video_n_frames,
-    plot_y_max=10)
-out_video = cv2.VideoWriter(out_video_path, cv2.VideoWriter_fourcc(
-    *'FMP4'), video_fps, (video_width, video_height))
+    plot_y_max=10
+)
+out_video = cv2.VideoWriter(
+    out_video_path, cv2.VideoWriter_fourcc(*'FMP4'), video_fps, (video_width, video_height)
+)
+
 frame_idx = 0
 output_frame = None
 input_frame_stack = deque([])
@@ -113,21 +116,17 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
             )
             # 랜드마크를 얻는다.
             frame_height, frame_width = output_frame.shape[0], output_frame.shape[1]
-            pose_landmarks = np.array([[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width]
-                                      for lmk in pose_landmarks.landmark], dtype=np.float32)
-            assert pose_landmarks.shape == (
-                33, 3), 'Unexpected landmarks shape: {}'.format(pose_landmarks.shape)
+            pose_landmarks = np.array([[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width] for lmk in pose_landmarks.landmark], dtype=np.float32)
+            assert pose_landmarks.shape == (33, 3), 'Unexpected landmarks shape: {}'.format(pose_landmarks.shape)
 
             # 현재 프레임의 포즈를 분류한다.
             pose_classification = pose_classifier(pose_landmarks)
 
             # EMA를 사용하여 포즈의 분류를 매끄럽게 해 준다.
-            pose_classification_filtered = pose_classification_filter(
-                pose_classification)
+            pose_classification_filtered = pose_classification_filter(pose_classification)
 
             # 반복 횟수를 카운트한다.
-            repetitions_count = repetition_counter(
-                pose_classification_filtered)
+            repetitions_count = repetition_counter(pose_classification_filtered)
 
         else:
             pose_classification = None
@@ -142,7 +141,8 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
             frame=output_frame,
             pose_classification=pose_classification,
             pose_classification_filtered=pose_classification_filtered,
-            repetitions_count=repetitions_count)
+            repetitions_count=repetitions_count
+        )
         if args.save or args.ui:
             convert = cv2.cvtColor(np.array(output_frame), cv2.COLOR_RGB2BGR)
         if args.save:
