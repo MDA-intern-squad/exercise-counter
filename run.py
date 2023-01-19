@@ -71,16 +71,17 @@ do_once_flag = False
 # =======================================================#
 
 
-def readFrame(event):
+def readFrame():
     while True:
         success, frame = video_cap.read()
         if success:
             input_frame_stack.clear() if args.cam else None
-            input_frame_stack.append(frame)
+            input_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            landmarks = pose_tracker.process(image=frame)
+            input_frame_stack.append([input_frame, landmarks])
 
 
-thread1_event = threading.Event()
-thread1 = threading.Thread(target=readFrame, args=(thread1_event,))
+thread1 = threading.Thread(target=readFrame)
 thread1.daemon = True
 thread1.start()
 
@@ -90,27 +91,18 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
         performance.setStartPoint()
         # 영상의 다음 프레임을 가져온다.
         # 9~10ms | 19~20ms
+
         if input_frame_stack:
-            input_frame = input_frame_stack.popleft()
+            input_frame, result = input_frame_stack.popleft()
             do_once_flag = True
         else:
+            print("YASS")
             if do_once_flag:
                 break
             else:
                 continue
-
-        # success, input_frame = video_cap.read()
-        # if not success:
-        #     break
-        # < 1ms | < 1ms
-        input_frame = cv2.cvtColor(input_frame, cv2.COLOR_BGR2RGB)
-
-        # 11~12ms | 11~12ms
-        # 포즈 트래커를 실행한다.
-        result = pose_tracker.process(image=input_frame)
         pose_landmarks = result.pose_landmarks
 
-        # 포즈 예측을 그린다.
         output_frame = input_frame.copy()
         if pose_landmarks is not None:
             # < 1ms | < 1ms
