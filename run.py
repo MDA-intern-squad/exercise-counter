@@ -1,11 +1,15 @@
+from asyncio import sleep
 import cv2
 import numpy as np
-import sys
 import tqdm
 from mediapipe.python.solutions import drawing_utils as mp_drawing
 from mediapipe.python.solutions import pose as mp_pose
 import mpCustom as ct
 import argparse
+import threading
+import time
+from collections import deque
+# from queue import Queue
 
 parser = argparse.ArgumentParser()
 parser.add_argument('dirName')
@@ -35,8 +39,6 @@ video_fps = video_cap.get(cv2.CAP_PROP_FPS)
 video_width = int(video_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 video_height = int(video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-# print(video_fps)
-
 # ==================== 초기화 ==================== #
 performance = ct.Performance()
 pose_tracker = mp_pose.Pose(model_complexity=0)
@@ -64,19 +66,44 @@ out_video = cv2.VideoWriter(out_video_path, cv2.VideoWriter_fourcc(
     *'FMP4'), video_fps, (video_width, video_height))
 frame_idx = 0
 output_frame = None
+input_frame_stack = deque([])
+do_once_flag = False
 # =======================================================#
+
+
+def readFrame(event):
+    while True:
+        success, frame = video_cap.read()
+        if success:
+            input_frame_stack.clear() if args.cam else None
+            input_frame_stack.append(frame)
+
+
+thread1_event = threading.Event()
+thread1 = threading.Thread(target=readFrame, args=(thread1_event,))
+thread1.daemon = True
+thread1.start()
+
+print("### End ###")
 with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
     while True:
-        # 영상의 다음 프레임을 가져온다.
         performance.setStartPoint()
-        # Get next frame of the video.
+        # 영상의 다음 프레임을 가져온다.
         # 9~10ms | 19~20ms
-        success, input_frame = video_cap.read()
-        if not success:
-            break
+        if input_frame_stack:
+            input_frame = input_frame_stack.popleft()
+            do_once_flag = True
+        else:
+            if do_once_flag:
+                break
+            else:
+                continue
+
+        # success, input_frame = video_cap.read()
+        # if not success:
+        #     break
         # < 1ms | < 1ms
         input_frame = cv2.cvtColor(input_frame, cv2.COLOR_BGR2RGB)
-
 
         # 11~12ms | 11~12ms
         # 포즈 트래커를 실행한다.
@@ -90,10 +117,12 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
             mp_drawing.draw_landmarks(
                 image=output_frame,
                 landmark_list=pose_landmarks,
-                connections=mp_pose.POSE_CONNECTIONS)
+                connections=mp_pose.POSE_CONNECTIONS
+            )
             # 랜드마크를 얻는다.
             frame_height, frame_width = output_frame.shape[0], output_frame.shape[1]
-            pose_landmarks = np.array([[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width] for lmk in pose_landmarks.landmark], dtype=np.float32)
+            pose_landmarks = np.array([[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width]
+                                      for lmk in pose_landmarks.landmark], dtype=np.float32)
             assert pose_landmarks.shape == (
                 33, 3), 'Unexpected landmarks shape: {}'.format(pose_landmarks.shape)
 
@@ -101,10 +130,12 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
             pose_classification = pose_classifier(pose_landmarks)
 
             # EMA를 사용하여 포즈의 분류를 매끄럽게 해 준다.
-            pose_classification_filtered = pose_classification_filter(pose_classification)
+            pose_classification_filtered = pose_classification_filter(
+                pose_classification)
 
             # 반복 횟수를 카운트한다.
-            repetitions_count = repetition_counter(pose_classification_filtered)
+            repetitions_count = repetition_counter(
+                pose_classification_filtered)
 
         else:
             pose_classification = None
