@@ -41,7 +41,7 @@ video_height = int(video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
 # ==================== 초기화 ==================== #
 performance = ct.Performance()
-pose_tracker = mp_pose.Pose(model_complexity=0)
+pose_tracker = mp_pose.Pose(model_complexity=1)
 pose_embedder = ct.FullBodyPoseEmbedder()
 pose_classifier = ct.PoseClassifier(
     pose_samples_folder=pose_samples_folder,
@@ -67,7 +67,6 @@ out_video = cv2.VideoWriter(out_video_path, cv2.VideoWriter_fourcc(
 frame_idx = 0
 output_frame = None
 input_frame_stack = deque([])
-do_once_flag = False
 # =======================================================#
 
 
@@ -76,28 +75,27 @@ def readFrame():
         success, frame = video_cap.read()
         if success:
             input_frame_stack.clear() if args.cam else None
-            input_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             landmarks = pose_tracker.process(image=frame)
-            input_frame_stack.append([input_frame, landmarks])
+            input_frame_stack.append([frame, landmarks])
 
 
 thread1 = threading.Thread(target=readFrame)
 thread1.daemon = True
 thread1.start()
 
+while not input_frame_stack:
+    pass
+
 print("### End ###")
 with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
     while True:
         performance.setStartPoint()
         # 영상의 다음 프레임을 가져온다.
-        # 9~10ms | 19~20ms
-
         if input_frame_stack:
             input_frame, result = input_frame_stack.popleft()
-            do_once_flag = True
         else:
-            print("YASS")
-            if do_once_flag:
+            if frame_idx == video_n_frames:
                 break
             else:
                 continue
@@ -122,8 +120,7 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
             pose_classification = pose_classifier(pose_landmarks)
 
             # EMA를 사용하여 포즈의 분류를 매끄럽게 해 준다.
-            pose_classification_filtered = pose_classification_filter(
-                pose_classification)
+            pose_classification_filtered = pose_classification_filter(pose_classification)
 
             # 반복 횟수를 카운트한다.
             repetitions_count = repetition_counter(
@@ -138,11 +135,14 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
         # 6ms | 6ms
         # 분류 그래프와 반복 횟수 카운터를 표시한다.
 
-        output_frame = pose_classification_visualizer(
-            frame=output_frame,
-            pose_classification=pose_classification,
-            pose_classification_filtered=pose_classification_filtered,
-            repetitions_count=repetitions_count)
+        # output_frame = pose_classification_visualizer(
+        #     frame=output_frame,
+        #     pose_classification=pose_classification,
+        #     pose_classification_filtered=pose_classification_filtered,
+        #     repetitions_count=repetitions_count)
+        
+        cv2.putText(output_frame, str(repetitions_count), (100, 100), cv2.FONT_HERSHEY_PLAIN, 30, (0, 0, 255), 1, cv2.LINE_AA, True)
+
         if args.save or args.ui:
             convert = cv2.cvtColor(np.array(output_frame), cv2.COLOR_RGB2BGR)
         if args.save:
