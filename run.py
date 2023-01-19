@@ -9,7 +9,7 @@ import argparse
 import threading
 import time
 from collections import deque
-# from queue import Queue
+from queue import Queue
 
 parser = argparse.ArgumentParser()
 parser.add_argument('dirName')
@@ -33,6 +33,8 @@ pose_samples_folder = f'./data/{dirName}/dist'
 class_name = 'up'
 
 video_cap = cv2.VideoCapture(0 if args.cam else video_path)
+video_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920) # 가로
+video_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080) # 세로
 video_cap.set(cv2.CAP_PROP_FPS, 60)
 video_n_frames = video_cap.get(cv2.CAP_PROP_FRAME_COUNT)
 video_fps = video_cap.get(cv2.CAP_PROP_FPS)
@@ -70,10 +72,11 @@ out_video = cv2.VideoWriter(
 frame_idx = 0
 output_frame = None
 input_frame_stack = deque([])
+output_frame_queue = Queue()
 # =======================================================#
 
 
-def readFrame():
+def IthreadFunction():
     while True:
         success, frame = video_cap.read()
         if success:
@@ -83,79 +86,94 @@ def readFrame():
             input_frame_stack.append([frame, landmarks])
 
 
-thread1 = threading.Thread(target=readFrame)
-thread1.daemon = True
-thread1.start()
+IThread = threading.Thread(target=IthreadFunction)
+IThread.daemon = True
+IThread.start()
+
 
 while not input_frame_stack:
     pass
 
-print("### End ###")
-with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
-    while True:
-        performance.setStartPoint()
-        # 영상의 다음 프레임을 가져온다.
-        if input_frame_stack:
-            input_frame, result = input_frame_stack.popleft()
-        else:
-            if frame_idx == video_n_frames:
-                break
+def logicThreadFunction():
+    global frame_idx
+    with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
+        while True:
+            # 영상의 다음 프레임을 가져온다.
+            if input_frame_stack:
+                input_frame, result = input_frame_stack.popleft()
             else:
-                continue
-        pose_landmarks = result.pose_landmarks
+                if frame_idx == video_n_frames:
+                    break
+                else:
+                    continue
+            pose_landmarks = result.pose_landmarks
 
-        output_frame = input_frame.copy()
-        if pose_landmarks is not None:
-            # < 1ms | < 1ms
-            mp_drawing.draw_landmarks(
-                image=output_frame,
-                landmark_list=pose_landmarks,
-                connections=mp_pose.POSE_CONNECTIONS
-            )
-            # 랜드마크를 얻는다.
-            frame_height, frame_width = output_frame.shape[0], output_frame.shape[1]
-            pose_landmarks = np.array([[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width] for lmk in pose_landmarks.landmark], dtype=np.float32)
-            assert pose_landmarks.shape == (33, 3), 'Unexpected landmarks shape: {}'.format(pose_landmarks.shape)
+            output_frame = input_frame.copy()
+            if pose_landmarks is not None:
+                # < 1ms | < 1ms
+                mp_drawing.draw_landmarks(
+                    image=output_frame,
+                    landmark_list=pose_landmarks,
+                    connections=mp_pose.POSE_CONNECTIONS
+                )
+                # 랜드마크를 얻는다.
+                frame_height, frame_width = output_frame.shape[0], output_frame.shape[1]
+                pose_landmarks = np.array([[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width] for lmk in pose_landmarks.landmark], dtype=np.float32)
+                assert pose_landmarks.shape == (33, 3), 'Unexpected landmarks shape: {}'.format(pose_landmarks.shape)
 
-            # 현재 프레임의 포즈를 분류한다.
-            pose_classification = pose_classifier(pose_landmarks)
+                # 현재 프레임의 포즈를 분류한다.
+                pose_classification = pose_classifier(pose_landmarks)
 
-            # EMA를 사용하여 포즈의 분류를 매끄럽게 해 준다.
-            pose_classification_filtered = pose_classification_filter(pose_classification)
+                # EMA를 사용하여 포즈의 분류를 매끄럽게 해 준다.
+                pose_classification_filtered = pose_classification_filter(pose_classification)
 
-            # 반복 횟수를 카운트한다.
-            repetitions_count = repetition_counter(pose_classification_filtered)
+                # 반복 횟수를 카운트한다.
+                repetitions_count = repetition_counter(pose_classification_filtered)
 
-        else:
-            pose_classification = None
-            pose_classification_filtered = pose_classification_filter(dict())
-            pose_classification_filtered = None
-            repetitions_count = repetition_counter.n_repeats
+            else:
+                pose_classification = None
+                pose_classification_filtered = pose_classification_filter(dict())
+                pose_classification_filtered = None
+                repetitions_count = repetition_counter.n_repeats
 
-        # 6ms | 6ms
-        # 분류 그래프와 반복 횟수 카운터를 표시한다.
+            # 6ms | 6ms
+            # 분류 그래프와 반복 횟수 카운터를 표시한다.
 
-        # output_frame = pose_classification_visualizer(
-        #     frame=output_frame,
-        #     pose_classification=pose_classification,
-        #     pose_classification_filtered=pose_classification_filtered,
-        #     repetitions_count=repetitions_count)
-        
-        cv2.putText(output_frame, str(repetitions_count), (100, 100), cv2.FONT_HERSHEY_PLAIN, 30, (0, 0, 255), 1, cv2.LINE_AA, True)
+            # output_frame = pose_classification_visualizer(
+            #     frame=output_frame,
+            #     pose_classification=pose_classification,
+            #     pose_classification_filtered=pose_classification_filtered,
+            #     repetitions_count=repetitions_count)
+            
+            cv2.putText(output_frame, str(repetitions_count), (50, 350), cv2.FONT_HERSHEY_PLAIN, 30, (0, 0, 255), 10, cv2.LINE_AA)
 
-        if args.save or args.ui:
-            convert = cv2.cvtColor(np.array(output_frame), cv2.COLOR_RGB2BGR)
+            if args.save or args.ui:
+                convert = cv2.cvtColor(np.array(output_frame), cv2.COLOR_RGB2BGR)
+                output_frame_queue.put(convert)
+            if args.progress:
+                pbar.update()
+
+            frame_idx += 1
+
+    # 비디오와 mediapipe의 pose모델을 닫는다.
+    out_video.release()
+    pose_tracker.close()
+
+
+LogicThread = threading.Thread(target=logicThreadFunction)
+LogicThread.daemon = True
+LogicThread.start()
+
+while True:
+    if output_frame_queue:
+        convert = output_frame_queue.get()
+        performance.setStartPoint()
         if args.save:
             out_video.write(convert)
         if args.ui:
             cv2.imshow('12345', convert)
             cv2.waitKey(1)
-        if args.progress:
-            pbar.update()
         if args.performance:
             performance.printEndPoint()
-        frame_idx += 1
 
-# 비디오와 mediapipe의 pose모델을 닫는다.
-out_video.release()
-pose_tracker.close()
+cv2.destroyAllWindows()
