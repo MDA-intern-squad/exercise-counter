@@ -58,26 +58,30 @@ pose_classification_visualizer = ct.PoseClassificationVisualizer(
     plot_x_max=video_n_frames,
     plot_y_max=10)
 out_video = cv2.VideoWriter(out_video_path, cv2.VideoWriter_fourcc(
-    *'X264'), video_fps, (video_width, video_height))
+    *'FMP4'), video_fps, (video_width, video_height))
 frame_idx = 0
 output_frame = None
 # =======================================================#
 with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
     while True:
-        # Get next frame of the video.
         performance.setStartPoint()
+        # Get next frame of the video.
+        # 9~10ms | 19~20ms
         success, input_frame = video_cap.read()
         if not success:
             break
+        # < 1ms | < 1ms
+        input_frame = cv2.cvtColor(input_frame, cv2.COLOR_BGR2RGB)
 
         # Run pose tracker.
-        input_frame = cv2.cvtColor(input_frame, cv2.COLOR_BGR2RGB)
+        # 11~12ms | 11~12ms
         result = pose_tracker.process(image=input_frame)
         pose_landmarks = result.pose_landmarks
 
         # Draw pose prediction.
         output_frame = input_frame.copy()
         if pose_landmarks is not None:
+            # < 1ms | < 1ms
             mp_drawing.draw_landmarks(
                 image=output_frame,
                 landmark_list=pose_landmarks,
@@ -90,13 +94,16 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
                 33, 3), 'Unexpected landmarks shape: {}'.format(pose_landmarks.shape)
 
             # Classify the pose on the current frame.
+            # 9 ~ 10ms | 9 ~ 10ms
             pose_classification = pose_classifier(pose_landmarks)
 
             # Smooth classification using EMA.
+            # < 1ms | < 1ms
             pose_classification_filtered = pose_classification_filter(
                 pose_classification)
 
             # Count repetitions.
+            # < 1ms | < 1ms
             repetitions_count = repetition_counter(
                 pose_classification_filtered)
 
@@ -107,13 +114,12 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
             repetitions_count = repetition_counter.n_repeats
 
         # Draw classification plot and repetition counter.
-
+        # 6ms | 6ms
         output_frame = pose_classification_visualizer(
             frame=output_frame,
             pose_classification=pose_classification,
             pose_classification_filtered=pose_classification_filtered,
             repetitions_count=repetitions_count)
-
         if args.save or args.ui:
             convert = cv2.cvtColor(np.array(output_frame), cv2.COLOR_RGB2BGR)
         if args.save:
@@ -125,7 +131,6 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
             pbar.update()
         if args.performance:
             performance.printEndPoint()
-
         frame_idx += 1
 
 # 비디오와 mediapipe의 pose모델을 닫는다

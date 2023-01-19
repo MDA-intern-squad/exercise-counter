@@ -17,6 +17,9 @@ for video in videos:
         os.mkdir(exerciseDir + 'out/' + video.split('.')[0])
         subprocess.call(
             ['python', './videosplitter.py', sys.argv[1], video], shell=False)
+        print(video)
+        subprocess.call(
+            ['python', './main.py', sys.argv[1], video.split('.')[0]], shell=False)
 
-subprocess.call(['python', './main.py', sys.argv[1]], shell=False)
-subprocess.call(['python', './run.py', sys.argv[1]], shell=False)
+
+# subprocess.call(['python', './run.py', sys.argv[1]], shell=False)
