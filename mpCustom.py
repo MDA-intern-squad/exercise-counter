@@ -362,8 +362,7 @@ class PoseClassifier(object):
             # 대상에 가장 가까운 포즈를 찾는다.
             pose_landmarks = sample.landmarks.copy()
             pose_classification = self.__call__(pose_landmarks)
-            class_names = [class_name for class_name, count in pose_classification.items(
-            ) if count == max(pose_classification.values())]
+            class_names = [class_name for class_name, count in pose_classification.items() if count == max(pose_classification.values())]
 
             # 가장 가까운 포즈의 클래스가 다르거나 둘 이상의 포즈 클래스가 가장 가까운 포즈로 탐지된 경우 표본이 특이치(outlier)이다.
             if sample.class_name not in class_names or len(class_names) != 1:
@@ -397,8 +396,7 @@ class PoseClassifier(object):
 
         # 포즈 임베딩을 얻는다.
         pose_embedding = self._pose_embedder(pose_landmarks)
-        flipped_pose_embedding = self._pose_embedder(
-            pose_landmarks * np.array([-1, 1, 1]))
+        flipped_pose_embedding = self._pose_embedder(pose_landmarks * np.array([-1, 1, 1]))
 
         # 최대 거리로 분류한다.
         #
@@ -435,10 +433,8 @@ class PoseClassifier(object):
         mean_dist_heap = mean_dist_heap[:self._top_n_by_mean_distance]
 
         # Collect results into map: (class_name -> n_samples)
-        class_names = [
-            self._pose_samples[sample_idx].class_name for _, sample_idx in mean_dist_heap]
-        result = {class_name: class_names.count(
-            class_name) for class_name in set(class_names)}
+        class_names = [self._pose_samples[sample_idx].class_name for _, sample_idx in mean_dist_heap]
+        result = {class_name: class_names.count(class_name) for class_name in set(class_names)}
 
         return result
 

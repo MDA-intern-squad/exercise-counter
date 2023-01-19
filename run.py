@@ -45,14 +45,17 @@ pose_classifier = ct.PoseClassifier(
     pose_samples_folder=pose_samples_folder,
     pose_embedder=pose_embedder,
     top_n_by_max_distance=30,
-    top_n_by_mean_distance=10)
+    top_n_by_mean_distance=10
+)
 pose_classification_filter = ct.EMADictSmoothing(
     window_size=10,
-    alpha=0.2)
+    alpha=0.2
+)
 repetition_counter = ct.RepetitionCounter(
     class_name=class_name,
     enter_threshold=6,
-    exit_threshold=4)
+    exit_threshold=4
+)
 pose_classification_visualizer = ct.PoseClassificationVisualizer(
     class_name=class_name,
     plot_x_max=video_n_frames,
@@ -64,6 +67,7 @@ output_frame = None
 # =======================================================#
 with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
     while True:
+        # 영상의 다음 프레임을 가져온다.
         performance.setStartPoint()
         # Get next frame of the video.
         # 9~10ms | 19~20ms
@@ -73,12 +77,13 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
         # < 1ms | < 1ms
         input_frame = cv2.cvtColor(input_frame, cv2.COLOR_BGR2RGB)
 
-        # Run pose tracker.
+
         # 11~12ms | 11~12ms
+        # 포즈 트래커를 실행한다.
         result = pose_tracker.process(image=input_frame)
         pose_landmarks = result.pose_landmarks
 
-        # Draw pose prediction.
+        # 포즈 예측을 그린다.
         output_frame = input_frame.copy()
         if pose_landmarks is not None:
             # < 1ms | < 1ms
@@ -86,26 +91,20 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
                 image=output_frame,
                 landmark_list=pose_landmarks,
                 connections=mp_pose.POSE_CONNECTIONS)
-            # Get landmarks.
+            # 랜드마크를 얻는다.
             frame_height, frame_width = output_frame.shape[0], output_frame.shape[1]
-            pose_landmarks = np.array([[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width]
-                                       for lmk in pose_landmarks.landmark], dtype=np.float32)
+            pose_landmarks = np.array([[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width] for lmk in pose_landmarks.landmark], dtype=np.float32)
             assert pose_landmarks.shape == (
                 33, 3), 'Unexpected landmarks shape: {}'.format(pose_landmarks.shape)
 
-            # Classify the pose on the current frame.
-            # 9 ~ 10ms | 9 ~ 10ms
+            # 현재 프레임의 포즈를 분류한다.
             pose_classification = pose_classifier(pose_landmarks)
 
-            # Smooth classification using EMA.
-            # < 1ms | < 1ms
-            pose_classification_filtered = pose_classification_filter(
-                pose_classification)
+            # EMA를 사용하여 포즈의 분류를 매끄럽게 해 준다.
+            pose_classification_filtered = pose_classification_filter(pose_classification)
 
-            # Count repetitions.
-            # < 1ms | < 1ms
-            repetitions_count = repetition_counter(
-                pose_classification_filtered)
+            # 반복 횟수를 카운트한다.
+            repetitions_count = repetition_counter(pose_classification_filtered)
 
         else:
             pose_classification = None
@@ -113,8 +112,9 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
             pose_classification_filtered = None
             repetitions_count = repetition_counter.n_repeats
 
-        # Draw classification plot and repetition counter.
         # 6ms | 6ms
+        # 분류 그래프와 반복 횟수 카운터를 표시한다.
+
         output_frame = pose_classification_visualizer(
             frame=output_frame,
             pose_classification=pose_classification,
@@ -133,6 +133,6 @@ with tqdm.tqdm(total=video_n_frames, position=0, leave=False) as pbar:
             performance.printEndPoint()
         frame_idx += 1
 
-# 비디오와 mediapipe의 pose모델을 닫는다
+# 비디오와 mediapipe의 pose모델을 닫는다.
 out_video.release()
 pose_tracker.close()
