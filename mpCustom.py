@@ -26,10 +26,10 @@ class FullBodyPoseEmbedder(object):
     """3D 포즈 랜드마크를 3D 포즈 임베딩으로 변환합니다."""
 
     def __init__(self, torso_size_multiplier: float = 2.5):
-        # Multiplier to apply to the torso to get minimal body size.
+        # 몸통에 적용할 multiplier를 곱하여 최소 신체 크기를 얻을 수 있다.
         self._torso_size_multiplier = torso_size_multiplier
 
-        # Names of the landmarks as they appear in the prediction.
+        # 예측에 사용되는 랜드마크들의 이름
         self._landmark_names = [
             'nose',
             'left_eye_inner', 'left_eye', 'left_eye_outer',
@@ -57,10 +57,9 @@ class FullBodyPoseEmbedder(object):
 
         Result:
             (M, 3)과 같은 형상의 Pose Embedding이 있는 Numpy 배열을 반환합니다.
-            여기서 'M은' `_get_pose_distance_embedding` 에서 정의된 Pairwisde Distances의 개수입니다.
+            여기서 'M'은 `_get_pose_distance_embedding` 에서 정의된 Pairwisde Distances의 개수입니다.
         """
-        assert landmarks.shape[0] == len(
-            self._landmark_names), '예외되지 않은 랜드마크 번호: {}'.format(landmarks.shape[0])
+        assert landmarks.shape[0] == len(self._landmark_names), '예외되지 않은 랜드마크 번호: {}'.format(landmarks.shape[0])
 
         # 포즈의 랜드마크 얻기
         landmarks = np.copy(landmarks)
@@ -90,18 +89,18 @@ class FullBodyPoseEmbedder(object):
         return landmarks
 
     def _get_pose_center(self, landmarks: np.ndarray) -> np.ndarray:
-        """Calculates pose center as point between hips."""
+        """엉덩이 사이의 점으로 포즈의 중심을 계산합니다."""
         left_hip = landmarks[self._landmark_names.index('left_hip')]
         right_hip = landmarks[self._landmark_names.index('right_hip')]
-        center = (left_hip + right_hip) * 0.5
+        center = (left_hip + right_hip) / 2
         return center
 
     def _get_pose_size(self, landmarks: np.ndarray, torso_size_multiplier: float) -> np.float64:
-        """Calculates pose size.
+        """포즈의 크기를 계산합니다.
 
-        It is the maximum of two values:
-          * Torso size multiplied by `torso_size_multiplier`
-          * Maximum distance from pose center to any pose landmark
+        이 값은 다음 두 값을 비교하여 더 큰 값을 반환합니다.
+            * 몸통 크기(torso_size)에 "torso_size_multiplier" 를 곱한 값
+            * 포즈 중심에서 모든 포즈 랜드마크까지의 최대 거리
         """
         # 이 접근법은 포즈의 크기를 계산하기 위해 2D 랜드마크만 사용함
         landmarks = landmarks[:, :2]
@@ -109,36 +108,35 @@ class FullBodyPoseEmbedder(object):
         # 엉덩이의 중심
         left_hip = landmarks[self._landmark_names.index('left_hip')]
         right_hip = landmarks[self._landmark_names.index('right_hip')]
-        hips = (left_hip + right_hip) * 0.5
+        hips = (left_hip + right_hip) / 2
 
         # 어깨의 중심
         left_shoulder = landmarks[self._landmark_names.index('left_shoulder')]
-        right_shoulder = landmarks[self._landmark_names.index(
-            'right_shoulder')]
-        shoulders = (left_shoulder + right_shoulder) * 0.5
+        right_shoulder = landmarks[self._landmark_names.index('right_shoulder')]
+        shoulders = (left_shoulder + right_shoulder) / 2
 
-        # Torso size as the minimum body size.
+        # 몸통 크기는 최소 신체 크기와 같다.
         torso_size = np.linalg.norm(shoulders - hips)
 
-        # Max dist to pose center.
+        # 포즈의 중심에 대한 최대 거리
         pose_center = self._get_pose_center(landmarks)
         max_dist = np.max(np.linalg.norm(landmarks - pose_center, axis=1))
 
         return max(torso_size * torso_size_multiplier, max_dist)
 
     def _get_pose_distance_embedding(self, landmarks: np.ndarray) -> np.ndarray:
-        """Converts pose landmarks into 3D embedding.
+        """포즈 랜드마크를 3D 임베딩으로 변환합니다.
 
-        We use several pairwise 3D distances to form pose embedding. All distances
-        include X and Y components with sign. We differnt types of pairs to cover
-        different pose classes. Feel free to remove some or add new.
+        포즈 임베딩을 형성하기 위해 여러 쌍의 3D 거리를 사용합니다. 모든 거리에는
+        부호가 있는 X 및 Y가 포함됩니다. 서로 다른 포즈 클래스를 다루기 위해
+        서로 다른 유형의 쌍을 가지고 있습니다. 얼마든지 제거하거나 새로 추가할 수 있습니다.
 
         Args:
-          landmarks - NumPy array with 3D landmarks of shape (N, 3).
+            landmarks - (N, 3)과 같은 형상의 3D 랜드마크가 있는 Numpy 배열을 인자로 받습니다.
 
         Result:
-          Numpy array with pose embedding of shape (M, 3) where `M` is the number of
-          pairwise distances.
+            (M, 3)과 같은 형상의 Pose Embedding이 있는 Numpy 배열을 반환합니다.
+            여기서 'M'은 Pairwisde Distances의 개수입니다.
         """
         embedding = np.array([
 
@@ -269,9 +267,9 @@ class FullBodyPoseEmbedder(object):
     def _get_average_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
         lmk_from = landmarks[self._landmark_names.index(name_from)]
         lmk_to = landmarks[self._landmark_names.index(name_to)]
-        return (lmk_from + lmk_to) * 0.5
+        return (lmk_from + lmk_to) / 2
 
-    def _get_distance_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str):
+    def _get_distance_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
         lmk_from = landmarks[self._landmark_names.index(name_from)]
         lmk_to = landmarks[self._landmark_names.index(name_to)]
         return self._get_distance(lmk_from, lmk_to)
@@ -308,8 +306,7 @@ class PoseClassifier(object):
         self._top_n_by_mean_distance = top_n_by_mean_distance
         self._axes_weights = axes_weights
 
-        self._pose_samples = self._load_pose_samples(
-            pose_samples_folder, file_extension, file_separator, n_landmarks, n_dimensions, pose_embedder)
+        self._pose_samples = self._load_pose_samples(pose_samples_folder, file_extension, file_separator, n_landmarks, n_dimensions, pose_embedder)
 
     def _load_pose_samples(self, pose_samples_folder: str, file_extension: str, file_separator: str, n_landmarks: int, n_dimensions: int, pose_embedder: FullBodyPoseEmbedder) -> list[PoseSample]:
         """주어진 폴더로부터 포즈 샘플을 가져옵니다.
@@ -327,8 +324,7 @@ class PoseClassifier(object):
             ...
         """
         # 폴더 내의 각 파일은 하나의 포즈 클래스를 나타낸다.
-        file_names = [name for name in os.listdir(
-            pose_samples_folder) if name.endswith(file_extension)]
+        file_names = [name for name in os.listdir(pose_samples_folder) if name.endswith(file_extension)]
 
         pose_samples = []
         for file_name in file_names:
@@ -341,15 +337,16 @@ class PoseClassifier(object):
                 for row in csv_reader:
                     assert len(row) == n_landmarks * n_dimensions + \
                         1, 'Wrong number of values: {}'.format(len(row))
-                    landmarks = np.array(row[1:], np.float32).reshape(
-                        [n_landmarks, n_dimensions])
+                    landmarks = np.array(row[1:], np.float32).reshape([n_landmarks, n_dimensions])
                     pose_samples.append(
+
                         PoseSample(
                             name=row[0],
                             landmarks=landmarks,
                             class_name=class_name,
                             embedding=pose_embedder(landmarks)
                         )
+
                     )
 
         return pose_samples
@@ -366,8 +363,7 @@ class PoseClassifier(object):
 
             # 가장 가까운 포즈의 클래스가 다르거나 둘 이상의 포즈 클래스가 가장 가까운 포즈로 탐지된 경우 표본이 특이치(outlier)이다.
             if sample.class_name not in class_names or len(class_names) != 1:
-                outliers.append(PoseSampleOutlier(
-                    sample, class_names, pose_classification))
+                outliers.append(PoseSampleOutlier(sample, class_names, pose_classification))
 
         return outliers
 
@@ -391,8 +387,7 @@ class PoseClassifier(object):
                 }
         """
         # 제공된 포즈와 대상 포즈의 모양이 동일한지 확인한다.
-        assert pose_landmarks.shape == (
-            self._n_landmarks, self._n_dimensions), 'Unexpected shape: {}'.format(pose_landmarks.shape)
+        assert pose_landmarks.shape == (self._n_landmarks, self._n_dimensions), 'Unexpected shape: {}'.format(pose_landmarks.shape)
 
         # 포즈 임베딩을 얻는다.
         pose_embedding = self._pose_embedder(pose_landmarks)
@@ -405,10 +400,8 @@ class PoseClassifier(object):
         max_dist_heap = []
         for sample_idx, sample in enumerate(self._pose_samples):
             max_dist = min(
-                np.max(np.abs(sample.embedding - pose_embedding)
-                       * self._axes_weights),
-                np.max(np.abs(sample.embedding - flipped_pose_embedding)
-                       * self._axes_weights)
+                np.max(np.abs(sample.embedding - pose_embedding) * self._axes_weights),
+                np.max(np.abs(sample.embedding - flipped_pose_embedding) * self._axes_weights)
             )
             max_dist_heap.append([max_dist, sample_idx])
 
@@ -422,10 +415,8 @@ class PoseClassifier(object):
         for _, sample_idx in max_dist_heap:
             sample = self._pose_samples[sample_idx]
             mean_dist = min(
-                np.mean(np.abs(sample.embedding - pose_embedding)
-                        * self._axes_weights),
-                np.mean(np.abs(sample.embedding - flipped_pose_embedding)
-                        * self._axes_weights)
+                np.mean(np.abs(sample.embedding - pose_embedding) * self._axes_weights),
+                np.mean(np.abs(sample.embedding - flipped_pose_embedding) * self._axes_weights)
             )
             mean_dist_heap.append([mean_dist, sample_idx])
 
@@ -474,15 +465,12 @@ class EMADictSmoothing(object):
         self._data_in_window = self._data_in_window[:self._window_size]
 
         # 모든 키들을 얻는다.
-        keys = set(
-            [key for data in self._data_in_window for key, _ in data.items()])
+        keys = set([key for data in self._data_in_window for key, _ in data.items()])
 
         # 부드럽게 한 데이터를 얻는다.
         smoothed_data = dict()
         for key in keys:
-            factor = 1.0
-            top_sum = 0.0
-            bottom_sum = 0.0
+            factor, top_sum, bottom_sum = 1.0, 0.0, 0.0
             for data in self._data_in_window:
                 value = data[key] if key in data else 0.0
 
@@ -557,20 +545,22 @@ class RepetitionCounter(object):
 class PoseClassificationVisualizer(object):
     """모든 프레임에 대한 분류를 추적하고 렌더링합니다."""
 
-    def __init__(self,
-                 class_name,
-                 plot_location_x=0.05,
-                 plot_location_y=0.05,
-                 plot_max_width=0.4,
-                 plot_max_height=0.4,
-                 plot_figsize=(9, 4),
-                 plot_x_max=None,
-                 plot_y_max=None,
-                 counter_location_x=0.85,
-                 counter_location_y=0.05,
-                 counter_font_path='https://github.com/googlefonts/roboto/blob/main/src/hinted/Roboto-Regular.ttf?raw=true',
-                 counter_font_color='red',
-                 counter_font_size=0.15):
+    def __init__(
+        self,
+        class_name,
+        plot_location_x=0.05,
+        plot_location_y=0.05,
+        plot_max_width=0.4,
+        plot_max_height=0.4,
+        plot_figsize=(9, 4),
+        plot_x_max=None,
+        plot_y_max=None,
+        counter_location_x=0.85,
+        counter_location_y=0.05,
+        counter_font_path='https://github.com/googlefonts/roboto/blob/main/src/hinted/Roboto-Regular.ttf?raw=true',
+        counter_font_color='red',
+        counter_font_size=0.15
+    ):
         self._class_name = class_name
         self._plot_location_x = plot_location_x
         self._plot_location_y = plot_location_y
@@ -619,15 +609,15 @@ class PoseClassificationVisualizer(object):
         output_img_draw = ImageDraw.Draw(output_img)
         if self._counter_font is None:
             font_size = int(output_height * self._counter_font_size)
-            font_request = requests.get(
-                self._counter_font_path, allow_redirects=True)
-            self._counter_font = ImageFont.truetype(
-                io.BytesIO(font_request.content), size=font_size)
-        output_img_draw.text((output_width * self._counter_location_x,
-                              output_height * self._counter_location_y),
-                             str(repetitions_count),
-                             font=self._counter_font,
-                             fill=self._counter_font_color)
+            font_request = requests.get(self._counter_font_path, allow_redirects=True)
+            self._counter_font = ImageFont.truetype(io.BytesIO(font_request.content), size=font_size)
+
+        output_img_draw.text(
+            (output_width * self._counter_location_x, output_height * self._counter_location_y),
+            str(repetitions_count),
+            font=self._counter_font,
+            fill=self._counter_font_color
+        )
 
         return output_img
 
@@ -660,7 +650,8 @@ class PoseClassificationVisualizer(object):
         buf = io.BytesIO()
         dpi = min(
             output_width * self._plot_max_width / float(self._plot_figsize[0]),
-            output_height * self._plot_max_height / float(self._plot_figsize[1]))
+            output_height * self._plot_max_height / float(self._plot_figsize[1])
+        )
         fig.savefig(buf, dpi=dpi)
         buf.seek(0)
         img = Image.open(buf)
@@ -672,11 +663,7 @@ class PoseClassificationVisualizer(object):
 class BootstrapHelper(object):
     """분류를 위해 이미지를 부트스트랩하고 포즈 샘플을 필터링하는 데 도움을 줍니다."""
 
-    def __init__(self,
-                 images_in_folder,
-                 images_out_folder,
-                 csvs_out_folder,
-                 pose_class_name):
+    def __init__(self, images_in_folder, images_out_folder, csvs_out_folder, pose_class_name):
         self._images_in_folder = images_in_folder
         self._images_out_folder = images_out_folder
         self._csvs_out_folder = csvs_out_folder
@@ -710,30 +697,26 @@ class BootstrapHelper(object):
 
         pose_class_name = self._pose_class_name
         print('Bootstrapping ', pose_class_name, file=sys.stderr)
+
         # 포즈 클래스의 경로
-        images_in_folder = os.path.join(
-            self._images_in_folder, pose_class_name)
-        images_out_folder = os.path.join(
-            self._images_out_folder, pose_class_name)
-        csv_out_path = os.path.join(
-            self._csvs_out_folder, pose_class_name + '.csv')
-        if not os.path.exists(images_out_folder):
-            os.makedirs(images_out_folder)
+        images_in_folder = os.path.join(self._images_in_folder, pose_class_name)
+        images_out_folder = os.path.join(self._images_out_folder, pose_class_name)
+        csv_out_path = os.path.join(self._csvs_out_folder, pose_class_name + '.csv')
+
+        if not os.path.exists(images_out_folder): # out 폴더가 존재하지 않을 경우
+            os.makedirs(images_out_folder) # 자동 생성
 
         with open(csv_out_path, 'w') as csv_out_file:
-            csv_out_writer = csv.writer(
-                csv_out_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+            csv_out_writer = csv.writer(csv_out_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
             # 이미지들의 리스트를 얻는다.
-            image_names = sorted([n for n in os.listdir(
-                images_in_folder) if not n.startswith('.')])
+            image_names = sorted([n for n in os.listdir(images_in_folder) if not n.startswith('.')])
             if per_pose_class_limit is not None:
                 image_names = image_names[:per_pose_class_limit]
 
             # 모든 이미지를 Bootstrap 한다.
             for image_name in tqdm.tqdm(image_names):
                 # 이미지를 불러온다.
-                input_frame = cv2.imread(
-                    os.path.join(images_in_folder, image_name))
+                input_frame = cv2.imread(os.path.join(images_in_folder, image_name))
                 input_frame = cv2.cvtColor(input_frame, cv2.COLOR_BGR2RGB)
 
                 # 새 포즈 트래커를 초기화하고 실행한다.
@@ -744,31 +727,23 @@ class BootstrapHelper(object):
                 # 포즈 예측을 사용하여 이미지를 저장한다. ( 포즈가 감지된 경우 )
                 output_frame = input_frame.copy()
                 if pose_landmarks is not None:
-                    mp_drawing.draw_landmarks(
-                        image=output_frame, landmark_list=pose_landmarks, connections=mp_pose.POSE_CONNECTIONS)
-                output_frame = cv2.cvtColor(
-                    output_frame, cv2.COLOR_RGB2BGR)
-                cv2.imwrite(os.path.join(
-                    images_out_folder, image_name), output_frame)
+                    mp_drawing.draw_landmarks(image=output_frame, landmark_list=pose_landmarks, connections=mp_pose.POSE_CONNECTIONS)
+                output_frame = cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(os.path.join(images_out_folder, image_name), output_frame)
 
                 # 포즈가 감지된 경우 랜드마크를 저장한다.
                 if pose_landmarks is not None:
                     # 랜드마크를 얻는다.
                     frame_height, frame_width = output_frame.shape[0], output_frame.shape[1]
-                    pose_landmarks = np.array([[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width]
-                                               for lmk in pose_landmarks.landmark], dtype=np.float32)
+                    pose_landmarks = np.array([[lmk.x * frame_width, lmk.y * frame_height, lmk.z * frame_width] for lmk in pose_landmarks.landmark], dtype=np.float32)
 
-                    assert pose_landmarks.shape == (
-                        33, 3), 'Unexpected landmarks shape: {}'.format(pose_landmarks.shape)
+                    assert pose_landmarks.shape == (33, 3), 'Unexpected landmarks shape: {}'.format(pose_landmarks.shape)
 
-                    csv_out_writer.writerow(
-                        [image_name] + pose_landmarks.flatten().astype(np.str_).tolist())
+                    csv_out_writer.writerow([image_name] + pose_landmarks.flatten().astype(np.str_).tolist())
 
                 # XZ 투영(projection) 을 그려 이미지와 연결(concatenate)한다.
-                projection_xz = self._draw_xz_projection(
-                    output_frame=output_frame, pose_landmarks=pose_landmarks)
-                output_frame = np.concatenate(
-                    (output_frame, projection_xz), axis=1)
+                projection_xz = self._draw_xz_projection(output_frame=output_frame, pose_landmarks=pose_landmarks)
+                output_frame = np.concatenate((output_frame, projection_xz), axis=1)
 
     def _draw_xz_projection(self, output_frame, pose_landmarks, r=0.5, color='red'):
         frame_height, frame_width = output_frame.shape[0], output_frame.shape[1]
@@ -784,9 +759,9 @@ class BootstrapHelper(object):
         for idx_1, idx_2 in mp_pose.POSE_CONNECTIONS:
             # Z를 뒤집고 힙을 영상의 중앙으로 이동시킵니다.
             x1, y1, z1 = pose_landmarks[idx_1] * \
-                [1, 1, -1] + [0, 0, frame_height * 0.5]
+                [1, 1, -1] + [0, 0, frame_height / 2]
             x2, y2, z2 = pose_landmarks[idx_2] * \
-                [1, 1, -1] + [0, 0, frame_height * 0.5]
+                [1, 1, -1] + [0, 0, frame_height / 2]
 
             draw.ellipse([x1 - r, z1 - r, x1 + r, z1 + r], fill=color)
             draw.ellipse([x2 - r, z2 - r, x2 + r, z2 + r], fill=color)
@@ -801,10 +776,8 @@ class BootstrapHelper(object):
         """
         pose_class_name = self._pose_class_name
         # 포즈 클래스의 경로
-        images_out_folder = os.path.join(
-            self._images_out_folder, pose_class_name)
-        csv_out_path = os.path.join(
-            self._csvs_out_folder, pose_class_name + '.csv')
+        images_out_folder = os.path.join(self._images_out_folder, pose_class_name)
+        csv_out_path = os.path.join(self._csvs_out_folder, pose_class_name + '.csv')
 
         # CSV를 메모리로 읽는다. ( 원문 : Read CSV into memory )
         rows = []
@@ -818,8 +791,7 @@ class BootstrapHelper(object):
 
         # 해당 영상 없이 CSV 제거 라인을 재작성한다.
         with open(csv_out_path, 'w') as csv_out_file:
-            csv_out_writer = csv.writer(
-                csv_out_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+            csv_out_writer = csv.writer(csv_out_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
             for row in rows:
                 image_name = row[0]
                 image_path = os.path.join(images_out_folder, image_name)
@@ -843,8 +815,7 @@ class BootstrapHelper(object):
         샘플이 원래 클래스와 다르게 분류된 경우 -> 삭제하거나 유사한 샘플을 추가해야 합니다.
         """
         for outlier in outliers:
-            image_path = os.path.join(
-                self._images_out_folder, outlier.sample.class_name, outlier.sample.name)
+            image_path = os.path.join(self._images_out_folder, outlier.sample.class_name, outlier.sample.name)
 
             print('Outlier')
             print('  sample path =    ', image_path)
@@ -859,25 +830,21 @@ class BootstrapHelper(object):
     def remove_outliers(self, outliers):
         """이미지 폴더에서 이상치를 제거합니다."""
         for outlier in outliers:
-            image_path = os.path.join(
-                self._images_out_folder, outlier.sample.class_name, outlier.sample.name)
+            image_path = os.path.join(self._images_out_folder, outlier.sample.class_name, outlier.sample.name)
             os.remove(image_path)
 
     def print_images_in_statistics(self):
         """입력 이미지 폴더에서 통계를 출력합니다."""
-        self._print_images_statistics(
-            self._images_in_folder, self._pose_class_names)
+        self._print_images_statistics(self._images_in_folder, self._pose_class_names)
 
     def print_images_out_statistics(self):
         """출력 이미지 폴더에서 통계를 출력합니다."""
-        self._print_images_statistics(
-            self._images_out_folder, self._pose_class_names)
+        self._print_images_statistics(self._images_out_folder, self._pose_class_names)
 
     def _print_images_statistics(self, images_folder, pose_class_names):
         print('Number of images per pose class:')
         for pose_class_name in pose_class_names:
-            n_images = len([n for n in os.listdir(os.path.join(
-                images_folder, pose_class_name)) if not n.startswith('.')])
+            n_images = len([n for n in os.listdir(os.path.join(images_folder, pose_class_name)) if not n.startswith('.')])
             print('  {}: {}'.format(pose_class_name, n_images))
 
 
