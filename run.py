@@ -108,7 +108,7 @@ def logicThreadFunction():
                     continue
             pose_landmarks = result.pose_landmarks
 
-            output_frame = input_frame.copy()
+
             if pose_landmarks is not None:
                 # < 1ms | < 1ms
                 mp_drawing.draw_landmarks(
