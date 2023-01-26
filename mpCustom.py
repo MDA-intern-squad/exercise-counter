@@ -384,7 +384,7 @@ class PoseClassifier(object):
             pose_classification = self.__call__(pose_landmarks)
             class_names = [class_name for class_name, count in pose_classification.items() if count == max(pose_classification.values())]
 
-            # 가장 가까운 포즈의 클래스가 다르거나 둘 이상의 포즈 클래스가 가장 가까운 포즈로 탐지된 경우 표본이 특이치(outlier)이다.
+            # 가장 가까운 포즈의 클래스가 다르거나 둘 이상의 포즈 클래스가 가장 가까운 포즈로 탐지된 경우 표본이 이상치(outlier)이다.
             if sample.class_name not in class_names or len(class_names) != 1:
                 outliers.append(PoseSampleOutlier(sample, class_names, pose_classification))
 
@@ -396,7 +396,7 @@ class PoseClassifier(object):
         분류 작업은 두 단계로 이루어져 있습니다:
             * 먼저, MAX 거리별로 상위 N개의 샘플을 선택합니다. 주어진 포즈와 거의 똑같은 샘플은 삭제가 가능하지만,
             반대 방향으로 구부러진 joint는 거의 없습니다.
-            * 그런 다음, 평균 거리를 기준으로 상위 N개의 샘플을 선택합니다. 이전 단계에서 특이치를 제거한 후
+            * 그런 다음, 평균 거리를 기준으로 상위 N개의 샘플을 선택합니다. 이전 단계에서 이상치를 제거한 후
             평균적으로 가까운 표본을 선택할 수 있습니다.
 
         Args:
@@ -414,11 +414,11 @@ class PoseClassifier(object):
 
         # 포즈 임베딩을 얻는다.
         pose_embedding = self._pose_embedder(pose_landmarks)
-        flipped_pose_embedding = self._pose_embedder(pose_landmarks * np.array([-1, 1, 1]))
+        flipped_pose_embedding = self._pose_embedder(pose_landmarks * np.array([-1, 1, 1])) # 랜드마크가 좌우반전된 임베딩
 
         # 최대 거리로 분류한다.
         #
-        # 이것은 특이치를 제거하는 데 도움을 준다. -> 주어진 포즈와 거의 동일하지만
+        # 이것은 이상치를 제거하는 데 도움을 준다. -> 주어진 포즈와 거의 동일하지만
         # 관절 하나가 다른 방향으로 꺾여있고 실제로는 다른 포즈 클래스를 나타낸다.
         max_dist_heap = []
         for sample_idx, sample in enumerate(self._pose_samples):
@@ -456,7 +456,7 @@ class PoseClassifier(object):
 class EMADictSmoothing(object):
     """포즈 분류를 매끄럽게 해 줍니다."""
 
-    def __init__(self, window_size: int = 10, alpha: float = 0.2):
+    def __init__(self, window_size: int=10, alpha: float=0.2):
         self._window_size = window_size
         self._alpha = alpha
 
@@ -531,8 +531,8 @@ class RepetitionCounter(object):
     def __call__(self, pose_classification: dict[str, float]) -> int:
         """지정된 프레임까지 발생한 반복 횟수를 카운트합니다.
 
-        두 가지의 임계값을 사용합니다. 첫번째는 높은 쪽으로 올라가야 자세가 들어가고,
-        그 다음에 낮은 쪽으로 내려가야 자세가 나옵니다. 임계값 간의 차이로 인해
+        두 가지의 임계값을 사용합니다. 첫번째는 높은 쪽으로 올라가야 자세에 들어가고,
+        그 다음에 낮은 쪽으로 내려가야 자세에서 나옵니다. 임계값 간의 차이로 인해
         jittering을 예측할 수 있습니다. ( 임계값이 하나만 있는 경우에는 
         잘못된 카운트가 발생합니다. )
 
