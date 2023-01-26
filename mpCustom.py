@@ -290,16 +290,19 @@ class FullBodyPoseEmbedder(object):
         return embedding
 
     def _get_average_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
+        """두 랜드마크의 평균 값, 즉 중간 지점을 반환합니다."""
         lmk_from = landmarks[self._landmark_names.index(name_from)]
         lmk_to = landmarks[self._landmark_names.index(name_to)]
         return (lmk_from + lmk_to) / 2
 
     def _get_distance_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
+
         lmk_from = landmarks[self._landmark_names.index(name_from)]
         lmk_to = landmarks[self._landmark_names.index(name_to)]
         return self._get_distance(lmk_from, lmk_to)
 
     def _get_distance(self, lmk_from: np.ndarray, lmk_to: np.ndarray) -> np.ndarray:
+        """lmk_to 에서 lmk_from 을 뺀 3차원 좌표 배열을 반환합니다. 값에 음수도 포함됩니다."""
         return lmk_to - lmk_from
 
 # Pose Classification
@@ -483,7 +486,7 @@ class EMADictSmoothing(object):
                     'pushups_up': 1.7,
                 }
         """
-        # 간단한 코드를 위하여 창 시작 부분에 새 데이터를 추가한다.
+        # 창 시작 부분에 새 데이터를 추가한다.
         self._data_in_window.insert(0, data)
         self._data_in_window = self._data_in_window[:self._window_size]
 
