@@ -16,16 +16,17 @@ from mediapipe.python.solutions import pose as mp_pose
 import time
 
 
+# Commons
 def show_image(img, figsize=(10, 10)):
     plt.figure(figsize=figsize)
     plt.imshow(img)
     # plt.show()
 
-
+# Pose Embedding
 class FullBodyPoseEmbedder(object):
     """3D 포즈 랜드마크를 3D 포즈 임베딩으로 변환합니다."""
 
-    def __init__(self, torso_size_multiplier: float = 2.5):
+    def __init__(self, torso_size_multiplier: float=2.5):
         # 몸통에 적용할 multiplier를 곱하여 최소 신체 크기를 얻을 수 있다.
         self._torso_size_multiplier = torso_size_multiplier
 
@@ -49,7 +50,7 @@ class FullBodyPoseEmbedder(object):
             'left_foot_index', 'right_foot_index',
         ]
 
-    def __call__(self, landmarks: np.ndarray):
+    def __call__(self, landmarks: np.ndarray) -> np.ndarray:
         """포즈의 랜드마크를 표준화 하고 Embedding으로 변환합니다.
 
         Args:
@@ -59,7 +60,7 @@ class FullBodyPoseEmbedder(object):
             (M, 3)과 같은 형상의 Pose Embedding이 있는 Numpy 배열을 반환합니다.
             여기서 'M'은 `_get_pose_distance_embedding` 에서 정의된 Pairwisde Distances의 개수입니다.
         """
-        assert landmarks.shape[0] == len(self._landmark_names), '예외되지 않은 랜드마크 번호: {}'.format(landmarks.shape[0])
+        assert landmarks.shape[0] == len(self._landmark_names), f'예외되지 않은 랜드마크 번호: {landmarks.shape[0]}'
 
         # 포즈의 랜드마크 얻기
         landmarks = np.copy(landmarks)
@@ -138,6 +139,30 @@ class FullBodyPoseEmbedder(object):
             (M, 3)과 같은 형상의 Pose Embedding이 있는 Numpy 배열을 반환합니다.
             여기서 'M'은 Pairwisde Distances의 개수입니다.
         """
+        # 0 [hip center - shoulder center], 몸통의 세로길이
+        # 1 [left_shoulder - left_elbow], 왼쪽 상완
+        # 2 [right_shoulder - right_elbow], 오른쪽 상완
+        # 3 [left_elbow - left_wrist], 왼쪽 전완
+        # 4 [right_elbow - right_wrist], 오른쪽 전완
+        # 5 [left_hip - left_knee], 왼쪽 허벅지
+        # 6 [right_hip - right_knee], 오른쪽 허벅지
+        # 7 [left_knee - left_ankle], 왼쪽 종아리
+        # 8 [right_knee - right_ankle], 오른쪽 종아리
+        # 9 [left_shoulder - left_wrist], 왼쪽 팔
+        # 10 [right_shoulder - right_wrist], 오른쪽 팔
+        # 11 [left_hip - left_ankle], 왼쪽 다리
+        # 12 [right_hip - right_ankle], 오른쪽 다리
+        # 13 [left_hip - left_wrist], 왼쪽 엉덩이 - 손목
+        # 14 [right hip - right_wrist], 오른쪽 엉덩이 - 손목
+        # 15 [left_shoulder - left_ankle], 왼쪽 어깨 - 발목
+        # 16 [right_shoulder - right_ankle], 오른쪽 어깨 - 발목
+        # 17 [left_hip - left_wrist], 왼쪽 엉덩이 - 손목
+        # 18 [right_hip - right_wrist], 오른쪽 엉덩이 - 손목
+        # 19 [left_elbow - right_elbow], 팔꿈치 거리
+        # 20 [left_knee - right_knee], 무릎 거리
+        # 21 [left_wrist - right_wrist], 손목 거리
+        # 22 [left_ankle - right_ankle], 발목 거리
+
         embedding = np.array([
 
             # One joint.
@@ -252,7 +277,7 @@ class FullBodyPoseEmbedder(object):
                 landmarks, 'left_ankle', 'right_ankle'
             ),
 
-            # 신체 꺾임의 각도.
+            # 신체 꺾임의 방향.
 
             # self._get_distance(
             #     self._get_average_by_names(landmarks, 'left_wrist', 'left_ankle'),
@@ -277,6 +302,7 @@ class FullBodyPoseEmbedder(object):
     def _get_distance(self, lmk_from: np.ndarray, lmk_to: np.ndarray) -> np.ndarray:
         return lmk_to - lmk_from
 
+# Pose Classification
 
 class PoseSample(object):
 
@@ -289,7 +315,7 @@ class PoseSample(object):
 
 class PoseSampleOutlier(object):
 
-    def __init__(self, sample, detected_class, all_classes):
+    def __init__(self, sample: PoseSample, detected_class: list[str], all_classes: dict[str, int]):
         self.sample = sample
         self.detected_class = detected_class
         self.all_classes = all_classes
@@ -298,7 +324,7 @@ class PoseSampleOutlier(object):
 class PoseClassifier(object):
     """랜드마크로 포즈를 분류합니다."""
 
-    def __init__(self, pose_samples_folder: str, pose_embedder: FullBodyPoseEmbedder, file_extension: str = 'csv', file_separator: str = ',', n_landmarks: int = 33, n_dimensions: int = 3, top_n_by_max_distance: int = 30, top_n_by_mean_distance: int = 10, axes_weights: tuple | list = (1.0, 1.0, 0.2)) -> None:
+    def __init__(self, pose_samples_folder: str, pose_embedder: FullBodyPoseEmbedder, file_extension: str='csv', file_separator: str=',', n_landmarks: int=33, n_dimensions: int=3, top_n_by_max_distance: int=30, top_n_by_mean_distance: int=10, axes_weights: tuple | list=(1.0, 1.0, 0.2)):
         self._pose_embedder = pose_embedder
         self._n_landmarks = n_landmarks
         self._n_dimensions = n_dimensions
@@ -335,18 +361,15 @@ class PoseClassifier(object):
             with open(os.path.join(pose_samples_folder, file_name)) as csv_file:
                 csv_reader = csv.reader(csv_file, delimiter=file_separator)
                 for row in csv_reader:
-                    assert len(row) == n_landmarks * n_dimensions + \
-                        1, 'Wrong number of values: {}'.format(len(row))
+                    assert len(row) == n_landmarks * n_dimensions + 1, f'Wrong number of values: {len(row)}'
                     landmarks = np.array(row[1:], np.float32).reshape([n_landmarks, n_dimensions])
                     pose_samples.append(
-
                         PoseSample(
                             name=row[0],
                             landmarks=landmarks,
                             class_name=class_name,
                             embedding=pose_embedder(landmarks)
                         )
-
                     )
 
         return pose_samples
@@ -367,7 +390,7 @@ class PoseClassifier(object):
 
         return outliers
 
-    def __call__(self, pose_landmarks):
+    def __call__(self, pose_landmarks: np.ndarray) -> dict[str, int]:
         """주어진 포즈를 분류합니다.
 
         분류 작업은 두 단계로 이루어져 있습니다:
@@ -423,9 +446,9 @@ class PoseClassifier(object):
         mean_dist_heap = sorted(mean_dist_heap, key=lambda x: x[0])
         mean_dist_heap = mean_dist_heap[:self._top_n_by_mean_distance]
 
-        # Collect results into map: (class_name -> n_samples)
+        # 결과를 dict에 집어넣는다. (class_name -> n_samples)
         class_names = [self._pose_samples[sample_idx].class_name for _, sample_idx in mean_dist_heap]
-        result = {class_name: class_names.count(class_name) for class_name in set(class_names)}
+        result = { class_name: class_names.count(class_name) for class_name in set(class_names) }
 
         return result
 
@@ -439,10 +462,10 @@ class EMADictSmoothing(object):
 
         self._data_in_window = []
 
-    def __call__(self, data):
+    def __call__(self, data: dict[str, int]) -> dict[str, float]:
         """주어진 포즈의 분류를 매끄럽게 해 줍니다.
 
-        Smoothing은 지정된 시간 창에서 관찰된 모든 포즈 클래스에 대한 지수 이동 평균을
+        Smoothing은 지정된 시간 창에서 관찰된 모든 포즈 클래스에 대한 지수 평균 이동(Expotential Moving Average, EMA)을
         계산하여 수행됩니다. 누락된 포즈 클래스는 0으로 계산됩니다.
 
         Args:
@@ -505,7 +528,7 @@ class RepetitionCounter(object):
     def n_repeats(self):
         return self._n_repeats
 
-    def __call__(self, pose_classification):
+    def __call__(self, pose_classification: dict[str, float]) -> int:
         """지정된 프레임까지 발생한 반복 횟수를 카운트합니다.
 
         두 가지의 임계값을 사용합니다. 첫번째는 높은 쪽으로 올라가야 자세가 들어가고,
@@ -528,8 +551,8 @@ class RepetitionCounter(object):
         if self._class_name in pose_classification:
             pose_confidence = pose_classification[self._class_name]
 
-        # On the very first frame or if we were out of the pose, just check if we
-        # entered it on this frame and update the state.
+        # 아직 포즈를 취하지 않았다면 현재 포즈 신뢰도가 포즈 임계점을 넘었는지 확인하고,
+        # 임계점을 넘었을 시 상태를 변경합니다.
         if not self._pose_entered:
             self._pose_entered = pose_confidence > self._enter_threshold
             return self._n_repeats
