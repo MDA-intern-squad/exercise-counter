@@ -117,11 +117,11 @@ class FullBodyPoseEmbedder(object):
         shoulders = (left_shoulder + right_shoulder) / 2
 
         # 몸통 크기는 최소 신체 크기와 같다.
-        torso_size = np.linalg.norm(shoulders - hips)
+        torso_size = np.linalg.norm(shoulders - hips) # <=> np.sum(np.abs(shoulders - hips) ** 2) ** 0.5
 
-        # 포즈의 중심에 대한 최대 거리
+        # 포즈의 중심으로부터의 최대 거리
         pose_center = self._get_pose_center(landmarks)
-        max_dist = np.max(np.linalg.norm(landmarks - pose_center, axis=1))
+        max_dist = np.max(np.linalg.norm(landmarks - pose_center, axis=1)) # <=> np.max(np.sum(np.abs(landmarks - pose_center) ** 2, axis=1) ** 0.5)
 
         return max(torso_size * torso_size_multiplier, max_dist)
 
@@ -296,7 +296,7 @@ class FullBodyPoseEmbedder(object):
         return (lmk_from + lmk_to) / 2
 
     def _get_distance_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
-
+        """두 랜드마크의 거리, 즉 차이를 반환합니다."""
         lmk_from = landmarks[self._landmark_names.index(name_from)]
         lmk_to = landmarks[self._landmark_names.index(name_to)]
         return self._get_distance(lmk_from, lmk_to)
@@ -439,7 +439,7 @@ class PoseClassifier(object):
         # 결측치를 제거한 후엔 평균 거리로 가장 가까운 포즈를 찾을 수 있다.
         mean_dist_heap = []
         for _, sample_idx in max_dist_heap:
-            sample = self._pose_samples[sample_idx]
+            sample: PoseSample = self._pose_samples[sample_idx]
             mean_dist = min(
                 np.mean(np.abs(sample.embedding - pose_embedding) * self._axes_weights),
                 np.mean(np.abs(sample.embedding - flipped_pose_embedding) * self._axes_weights)
@@ -463,7 +463,7 @@ class EMADictSmoothing(object):
         self._window_size = window_size
         self._alpha = alpha
 
-        self._data_in_window = []
+        self._data_in_window: list[dict] = []
 
     def __call__(self, data: dict[str, int]) -> dict[str, float]:
         """주어진 포즈의 분류를 매끄럽게 해 줍니다.
@@ -496,8 +496,11 @@ class EMADictSmoothing(object):
         # 부드럽게 한 데이터를 얻는다.
         smoothed_data = dict()
         for key in keys:
+
             factor, top_sum, bottom_sum = 1.0, 0.0, 0.0
+
             for data in self._data_in_window:
+
                 value = data[key] if key in data else 0.0
 
                 top_sum += factor * value
@@ -573,19 +576,19 @@ class PoseClassificationVisualizer(object):
 
     def __init__(
         self,
-        class_name,
-        plot_location_x=0.05,
-        plot_location_y=0.05,
-        plot_max_width=0.4,
-        plot_max_height=0.4,
-        plot_figsize=(9, 4),
-        plot_x_max=None,
-        plot_y_max=None,
-        counter_location_x=0.85,
-        counter_location_y=0.05,
-        counter_font_path='https://github.com/googlefonts/roboto/blob/main/src/hinted/Roboto-Regular.ttf?raw=true',
-        counter_font_color='red',
-        counter_font_size=0.15
+        class_name: str,
+        plot_location_x: int | float=0.05,
+        plot_location_y: int | float=0.05,
+        plot_max_width: int | float=0.4,
+        plot_max_height: int | float=0.4,
+        plot_figsize: tuple=(9, 4),
+        plot_x_max: int | float | None=None,
+        plot_y_max: int | float | None=None,
+        counter_location_x: int | float=0.85,
+        counter_location_y: int | float=0.05,
+        counter_font_path: str='https://github.com/googlefonts/roboto/blob/main/src/hinted/Roboto-Regular.ttf?raw=true',
+        counter_font_color: str='red',
+        counter_font_size: int | float=0.15
     ):
         self._class_name = class_name
         self._plot_location_x = plot_location_x
@@ -601,7 +604,7 @@ class PoseClassificationVisualizer(object):
         self._counter_font_color = counter_font_color
         self._counter_font_size = counter_font_size
 
-        self._counter_font = None
+        self._counter_font: ImageFont.FreeTypeFont | None = None
 
         self._pose_classification_history = []
         self._pose_classification_filtered_history = []
