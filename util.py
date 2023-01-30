@@ -223,7 +223,7 @@ class DistanceEmbeder:
         return lmk_to - lmk_from
     
 class KNNFinder:
-    def __init__(self, target: dict[str, np.ndarray], embeder: AngleEmbeder | DistanceEmbeder, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
+    def __init__(self, target: dict[str, np.ndarray], embeder: AngleEmbeder or DistanceEmbeder, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
         tmp_target: list[np.ndarray] = []
         target_dict: dict[str, int] = dict()
         
