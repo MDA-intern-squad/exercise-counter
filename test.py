@@ -3,6 +3,7 @@ import mediapipe as mp
 from mediapipe.python.solutions import drawing_utils as mp_drawing
 import numpy as np
 import cv2 as cv
+import time
 mp_pose = mp.solutions.pose
 
 # bootstrapper = util.Bootstrapper(mp_pose.Pose(model_complexity=1))
@@ -17,6 +18,8 @@ csv_loader = util.CSVLoader()
 
 up = csv_loader('./data/test/up.csv')
 down = csv_loader('./data/test/down.csv')
+
+print(up.shape)
 
 embeder = util.DistanceEmbeder()
 
@@ -37,7 +40,7 @@ finder = util.KNNFinder({
 
 cap = cv.VideoCapture('./data/test/test.mp4')
 pose = mp_pose.Pose(model_complexity=1)
-test = util.FullBodyPoseEmbedder(torso_size_multiplier=2.5)
+
 while True:
     ret, frame = cap.read()
     if ret:
@@ -48,7 +51,9 @@ while True:
         
         if pose_landmarks is not None:
             pose_world_landmarks = np.array([[lmk.x, lmk.y, lmk.z] for lmk in pose_world_landmarks], dtype=np.float32)
+            bef_time = time.time()
             find = finder(pose_world_landmarks)
+            print((time.time() - bef_time) * 1000)
             output_frame = frame.copy()
             mp_drawing.draw_landmarks(
                 image=output_frame,

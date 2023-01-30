@@ -227,6 +227,7 @@ class KNNFinder:
     def __init__(self, target, embeder, axes_weights: tuple or list=(1.0, 1.0, 0.2)):
         tmp_target = []
         target_dict = target.copy()
+        
         for k in target:
             tmp_target.extend(target[k])
             target_dict[k] = len(target[k])
