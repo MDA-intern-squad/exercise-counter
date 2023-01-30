@@ -110,6 +110,7 @@ def logicThreadFunction():
 
 
             if pose_landmarks is not None:
+                output_frame = input_frame.copy()
                 # < 1ms | < 1ms
                 mp_drawing.draw_landmarks(
                     image=output_frame,

@@ -327,7 +327,7 @@ class PoseSampleOutlier(object):
 class PoseClassifier(object):
     """랜드마크로 포즈를 분류합니다."""
 
-    def __init__(self, pose_samples_folder: str, pose_embedder: FullBodyPoseEmbedder, file_extension: str='csv', file_separator: str=',', n_landmarks: int=33, n_dimensions: int=3, top_n_by_max_distance: int=30, top_n_by_mean_distance: int=10, axes_weights: tuple | list=(1.0, 1.0, 0.2)):
+    def __init__(self, pose_samples_folder: str, pose_embedder: FullBodyPoseEmbedder, file_extension: str='csv', file_separator: str=',', n_landmarks: int=33, n_dimensions: int=3, top_n_by_max_distance: int=30, top_n_by_mean_distance: int=10, axes_weights: tuple or list=(1.0, 1.0, 0.2)):
         self._pose_embedder = pose_embedder
         self._n_landmarks = n_landmarks
         self._n_dimensions = n_dimensions
