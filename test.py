@@ -27,11 +27,13 @@ embeded_up = np.array([embeder(i) for i in up], dtype=np.float32)
 embeded_down = np.array([embeder(i) for i in down], dtype=np.float32)
 
 finder = util.KNNFinder({
-    'up': embeded_up,
-    'down': embeded_down
-}, embeder)
+    "up": embeded_up,
+    "down": embeded_down
+}, embeder,
+top_n_by_max_distance = 100, 
+top_n_by_mean_distance = 15)
 
-cap = cv.VideoCapture('./data/test/test.mp4')
+cap = cv.VideoCapture(0)
 pose = mp_pose.Pose(model_complexity=1)
 
 while True:
@@ -40,13 +42,14 @@ while True:
         image = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         result = pose.process(image)
         pose_landmarks = result.pose_landmarks
-        pose_world_landmarks = result.pose_world_landmarks.landmark
+       
         
         if pose_landmarks is not None:
+            pose_world_landmarks = result.pose_world_landmarks.landmark
             pose_world_landmarks = np.array([[lmk.x, lmk.y, lmk.z] for lmk in pose_world_landmarks], dtype=np.float32)
             bef_time = time.time()
             find = finder(pose_world_landmarks)
-            print((time.time() - bef_time) * 1000)
+            # print((time.time() - bef_time) * 1000)
             output_frame = frame.copy()
             mp_drawing.draw_landmarks(
                 image=output_frame,

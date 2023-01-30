@@ -223,7 +223,7 @@ class DistanceEmbeder:
         return lmk_to - lmk_from
     
 class KNNFinder:
-    def __init__(self, target: dict[str, np.ndarray], embeder: DistanceEmbeder, axes_weights: tuple=(1.0, 1.0, 0.2)):
+    def __init__(self, target: dict[str, np.ndarray], embeder: DistanceEmbeder, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
         tmp_target: list[np.ndarray] = []
         target_dict: dict[str, int] = dict()
         
@@ -235,6 +235,8 @@ class KNNFinder:
         self._dict = target_dict
         self._pose_embedder = embeder
         self._axes_weights = axes_weights
+        self._top_n_by_max_distance = top_n_by_max_distance
+        self._top_n_by_mean_distance = top_n_by_mean_distance
 
     def __call__(self, pose_landmarks: np.ndarray) -> dict[str, int]:
         pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([100, 100, 100])))
@@ -250,7 +252,7 @@ class KNNFinder:
             max_dist_heap.append([max_dist, sample_idx])
 
         max_dist_heap = sorted(max_dist_heap, key=lambda x: x[0])
-        max_dist_heap = max_dist_heap[:30] # 하위 30개를 가져온다. ( 이상치 제거 )
+        max_dist_heap = max_dist_heap[:self._top_n_by_max_distance]
 
         mean_dist_heap = []
         for _, sample_idx in max_dist_heap:
@@ -262,7 +264,7 @@ class KNNFinder:
             mean_dist_heap.append([mean_dist, sample_idx])
 
         mean_dist_heap = sorted(mean_dist_heap, key=lambda x: x[0])
-        mean_dist_heap = mean_dist_heap[:9]
+        mean_dist_heap = mean_dist_heap[:self._top_n_by_mean_distance]
 
         res = { name: 0 for name in self._dict }
         
