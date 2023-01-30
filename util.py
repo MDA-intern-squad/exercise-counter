@@ -66,7 +66,7 @@ class Bootstrapper:
         return files
 
 
-class AngleEmbeder:
+class PoseEmbedderByAngle:
     angles = [
         ["left_elbow", [11, 13, 15]],
         ["right_elbow", [12, 14, 16]],
@@ -89,7 +89,7 @@ class AngleEmbeder:
         pass
 
     def __call__(self, landmark):
-        return np.array([round(AngleEmbeder.three_angle(*[landmark[item[1][i]] for i in range(3)]), 5) for item in AngleEmbeder.angles], dtype=np.float32)
+        return np.array([round(PoseEmbedderByAngle.three_angle(*[landmark[item[1][i]] for i in range(3)]), 5) for item in PoseEmbedderByAngle.angles], dtype=np.float32)
 
     @staticmethod
     def three_angle(a, b, c):
@@ -104,9 +104,9 @@ class AngleEmbeder:
     
     @staticmethod
     def get_angle_names():
-        return [item[0] for item in AngleEmbeder.angles]
+        return [item[0] for item in PoseEmbedderByAngle.angles]
 
-class DistanceEmbeder:
+class PoseEmbedderByDistance:
     _landmark_names = [
         'nose',
         'left_eye_inner', 'left_eye', 'left_eye_outer',
@@ -212,18 +212,18 @@ class DistanceEmbeder:
             #     landmarks[self._landmark_names.index('right_hip')]),
         ])
     def _get_average_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
-        lmk_from = landmarks[DistanceEmbeder._landmark_names.index(name_from)]
-        lmk_to = landmarks[DistanceEmbeder._landmark_names.index(name_to)]
+        lmk_from = landmarks[PoseEmbedderByDistance._landmark_names.index(name_from)]
+        lmk_to = landmarks[PoseEmbedderByDistance._landmark_names.index(name_to)]
         return (lmk_from + lmk_to) / 2
     def _get_distance_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
-        lmk_from = landmarks[DistanceEmbeder._landmark_names.index(name_from)]
-        lmk_to = landmarks[DistanceEmbeder._landmark_names.index(name_to)]
+        lmk_from = landmarks[PoseEmbedderByDistance._landmark_names.index(name_from)]
+        lmk_to = landmarks[PoseEmbedderByDistance._landmark_names.index(name_to)]
         return self._get_distance(lmk_from, lmk_to)
     def _get_distance(self, lmk_from: np.ndarray, lmk_to: np.ndarray) -> np.ndarray:
         return lmk_to - lmk_from
     
-class KNNFinder:
-    def __init__(self, target: dict[str, np.ndarray], embeder: AngleEmbeder or DistanceEmbeder, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
+class PoseClassifierByKNN:
+    def __init__(self, target: dict[str, np.ndarray], embeder: PoseEmbedderByAngle or PoseEmbedderByDistance, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
         tmp_target: list[np.ndarray] = []
         target_dict: dict[str, int] = dict()
         
