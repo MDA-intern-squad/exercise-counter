@@ -19,7 +19,7 @@ csv_loader = util.CSVLoader()
 up = csv_loader('./data/test/up.csv')
 down = csv_loader('./data/test/down.csv')
 
-print(up.shape)
+# [frames: [ landmarks: [ xyz: int, int, int ], [], []... x33 ], [], [].. ]
 
 embeder = util.DistanceEmbeder()
 
