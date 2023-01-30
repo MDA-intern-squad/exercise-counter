@@ -23,19 +23,12 @@ down = csv_loader('./data/test/down.csv')
 
 embeder = util.DistanceEmbeder()
 
-embeded_up = []
-for i in up:
-    embeded_up.append(embeder(i))
-embeded_up = np.array(embeded_up, dtype=np.float32)
-
-embeded_down = []
-for i in down:
-    embeded_down.append(embeder(i))
-embeded_down = np.array(embeded_down, dtype=np.float32)
+embeded_up = np.array([embeder(i) for i in up], dtype=np.float32)
+embeded_down = np.array([embeder(i) for i in down], dtype=np.float32)
 
 finder = util.KNNFinder({
-    "up": embeded_up,
-    "down": embeded_down
+    'up': embeded_up,
+    'down': embeded_down
 }, embeder)
 
 cap = cv.VideoCapture('./data/test/test.mp4')

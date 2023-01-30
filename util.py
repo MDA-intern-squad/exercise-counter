@@ -28,7 +28,7 @@ class Bootstrapper:
     def __init__(self, pose) -> None:
         self.pose = pose
 
-    def __call__(self, filename) -> np.ndarray:
+    def __call__(self, filename: str) -> np.ndarray:
         images = Bootstrapper.split_video(filename)
         result: list[np.ndarray] = []
         with tqdm.tqdm(total=len(images), position=0, leave=False) as pbar:
@@ -127,7 +127,7 @@ class DistanceEmbeder:
     ]
     def __init__(self):
         pass
-    def __call__(self, landmarks):
+    def __call__(self, landmarks: np.ndarray) -> np.ndarray:
         return np.array([
             self._get_distance(
                 self._get_average_by_names(
@@ -223,13 +223,13 @@ class DistanceEmbeder:
         return lmk_to - lmk_from
     
 class KNNFinder:
-    def __init__(self, target: dict[str, int], embeder: np.ndarray, axes_weights: tuple=(1.0, 1.0, 0.2)):
-        tmp_target = []
-        target_dict = target.copy()
+    def __init__(self, target: dict[str, np.ndarray], embeder: DistanceEmbeder, axes_weights: tuple=(1.0, 1.0, 0.2)):
+        tmp_target: list[np.ndarray] = []
+        target_dict: dict[str, int] = {}
         
-        for k in target:
+        for k in target: # ['up', 'down']
             tmp_target.extend(target[k])
-            target_dict[k] = len(target[k])
+            target_dict[k] = len(target[k]) # target_dict에는 해당 클래스의 프레임 개수를 넣어준다.
 
         self._target = tmp_target
         self._dict = target_dict
@@ -273,7 +273,7 @@ class KNNFinder:
                     res[name] += 1
                     break
         return res
-            
+
 def pose_flatter(landmarks):
     tmp_arr = []
     for landmark in mp_pose.PoseLandmark:
