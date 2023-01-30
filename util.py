@@ -225,10 +225,10 @@ class DistanceEmbeder:
 class KNNFinder:
     def __init__(self, target: dict[str, np.ndarray], embeder: DistanceEmbeder, axes_weights: tuple=(1.0, 1.0, 0.2)):
         tmp_target: list[np.ndarray] = []
-        target_dict: dict[str, int] = {}
+        target_dict: dict[str, int] = dict()
         
         for k in target: # ['up', 'down']
-            tmp_target.extend(target[k])
+            tmp_target.extend(target[k]) # tmp_target에 up, down 임베딩들을 모두 넣어준다.
             target_dict[k] = len(target[k]) # target_dict에는 해당 클래스의 프레임 개수를 넣어준다.
 
         self._target = tmp_target
@@ -236,7 +236,7 @@ class KNNFinder:
         self._pose_embedder = embeder
         self._axes_weights = axes_weights
 
-    def __call__(self, pose_landmarks) -> dict[str, int]:
+    def __call__(self, pose_landmarks: np.ndarray) -> dict[str, int]:
         pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([100, 100, 100])))
         flipped_pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([-100, 100, 100])))
         
@@ -250,7 +250,7 @@ class KNNFinder:
             max_dist_heap.append([max_dist, sample_idx])
 
         max_dist_heap = sorted(max_dist_heap, key=lambda x: x[0])
-        max_dist_heap = max_dist_heap[:30]
+        max_dist_heap = max_dist_heap[:30] # 하위 30개를 가져온다. ( 이상치 제거 )
 
         mean_dist_heap = []
         for _, sample_idx in max_dist_heap:
