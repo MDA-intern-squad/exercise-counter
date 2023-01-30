@@ -21,7 +21,7 @@ down = csv_loader('./data/test/down.csv')
 
 # [frames: [ landmarks: [ xyz: int, int, int ], [], []... x33 ], [], [].. ]
 
-embeder = util.DistanceEmbeder()
+embeder = util.AngleEmbeder()
 
 embeded_up = np.array([embeder(i) for i in up], dtype=np.float32)
 embeded_down = np.array([embeder(i) for i in down], dtype=np.float32)
@@ -30,10 +30,10 @@ finder = util.KNNFinder({
     "up": embeded_up,
     "down": embeded_down
 }, embeder,
-top_n_by_max_distance = 100, 
-top_n_by_mean_distance = 15)
+top_n_by_max_distance = 300, 
+top_n_by_mean_distance = 49)
 
-cap = cv.VideoCapture(0)
+cap = cv.VideoCapture('./data/test/test4.mp4')
 pose = mp_pose.Pose(model_complexity=1)
 
 while True:
