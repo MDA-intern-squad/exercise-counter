@@ -117,11 +117,11 @@ class FullBodyPoseEmbedder(object):
         shoulders = (left_shoulder + right_shoulder) / 2
 
         # 몸통 크기는 최소 신체 크기와 같다.
-        torso_size = np.linalg.norm(shoulders - hips)
+        torso_size = np.linalg.norm(shoulders - hips) # <=> np.sum(np.abs(shoulders - hips) ** 2) ** 0.5
 
-        # 포즈의 중심에 대한 최대 거리
+        # 포즈의 중심으로부터의 최대 거리
         pose_center = self._get_pose_center(landmarks)
-        max_dist = np.max(np.linalg.norm(landmarks - pose_center, axis=1))
+        max_dist = np.max(np.linalg.norm(landmarks - pose_center, axis=1)) # <=> np.max(np.sum(np.abs(landmarks - pose_center) ** 2, axis=1) ** 0.5)
 
         return max(torso_size * torso_size_multiplier, max_dist)
 
@@ -290,16 +290,19 @@ class FullBodyPoseEmbedder(object):
         return embedding
 
     def _get_average_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
+        """두 랜드마크의 평균 값, 즉 중간 지점을 반환합니다."""
         lmk_from = landmarks[self._landmark_names.index(name_from)]
         lmk_to = landmarks[self._landmark_names.index(name_to)]
         return (lmk_from + lmk_to) / 2
 
     def _get_distance_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
+        """두 랜드마크의 거리, 즉 차이를 반환합니다."""
         lmk_from = landmarks[self._landmark_names.index(name_from)]
         lmk_to = landmarks[self._landmark_names.index(name_to)]
         return self._get_distance(lmk_from, lmk_to)
 
     def _get_distance(self, lmk_from: np.ndarray, lmk_to: np.ndarray) -> np.ndarray:
+        """lmk_to 에서 lmk_from 을 뺀 3차원 좌표 배열을 반환합니다. 값에 음수도 포함됩니다."""
         return lmk_to - lmk_from
 
 # Pose Classification
@@ -324,7 +327,7 @@ class PoseSampleOutlier(object):
 class PoseClassifier(object):
     """랜드마크로 포즈를 분류합니다."""
 
-    def __init__(self, pose_samples_folder: str, pose_embedder: FullBodyPoseEmbedder, file_extension: str='csv', file_separator: str=',', n_landmarks: int=33, n_dimensions: int=3, top_n_by_max_distance: int=30, top_n_by_mean_distance: int=10, axes_weights: tuple | list=(1.0, 1.0, 0.2)):
+    def __init__(self, pose_samples_folder: str, pose_embedder: FullBodyPoseEmbedder, file_extension: str='csv', file_separator: str=',', n_landmarks: int=33, n_dimensions: int=3, top_n_by_max_distance: int=30, top_n_by_mean_distance: int=10, axes_weights: tuple or list=(1.0, 1.0, 0.2)):
         self._pose_embedder = pose_embedder
         self._n_landmarks = n_landmarks
         self._n_dimensions = n_dimensions
@@ -384,7 +387,7 @@ class PoseClassifier(object):
             pose_classification = self.__call__(pose_landmarks)
             class_names = [class_name for class_name, count in pose_classification.items() if count == max(pose_classification.values())]
 
-            # 가장 가까운 포즈의 클래스가 다르거나 둘 이상의 포즈 클래스가 가장 가까운 포즈로 탐지된 경우 표본이 특이치(outlier)이다.
+            # 가장 가까운 포즈의 클래스가 다르거나 둘 이상의 포즈 클래스가 가장 가까운 포즈로 탐지된 경우 표본이 이상치(outlier)이다.
             if sample.class_name not in class_names or len(class_names) != 1:
                 outliers.append(PoseSampleOutlier(sample, class_names, pose_classification))
 
@@ -396,7 +399,7 @@ class PoseClassifier(object):
         분류 작업은 두 단계로 이루어져 있습니다:
             * 먼저, MAX 거리별로 상위 N개의 샘플을 선택합니다. 주어진 포즈와 거의 똑같은 샘플은 삭제가 가능하지만,
             반대 방향으로 구부러진 joint는 거의 없습니다.
-            * 그런 다음, 평균 거리를 기준으로 상위 N개의 샘플을 선택합니다. 이전 단계에서 특이치를 제거한 후
+            * 그런 다음, 평균 거리를 기준으로 상위 N개의 샘플을 선택합니다. 이전 단계에서 이상치를 제거한 후
             평균적으로 가까운 표본을 선택할 수 있습니다.
 
         Args:
@@ -414,11 +417,11 @@ class PoseClassifier(object):
 
         # 포즈 임베딩을 얻는다.
         pose_embedding = self._pose_embedder(pose_landmarks)
-        flipped_pose_embedding = self._pose_embedder(pose_landmarks * np.array([-1, 1, 1]))
+        flipped_pose_embedding = self._pose_embedder(pose_landmarks * np.array([-1, 1, 1])) # 랜드마크가 좌우반전된 임베딩
 
         # 최대 거리로 분류한다.
         #
-        # 이것은 특이치를 제거하는 데 도움을 준다. -> 주어진 포즈와 거의 동일하지만
+        # 이것은 이상치를 제거하는 데 도움을 준다. -> 주어진 포즈와 거의 동일하지만
         # 관절 하나가 다른 방향으로 꺾여있고 실제로는 다른 포즈 클래스를 나타낸다.
         max_dist_heap = []
         for sample_idx, sample in enumerate(self._pose_samples):
@@ -436,7 +439,7 @@ class PoseClassifier(object):
         # 결측치를 제거한 후엔 평균 거리로 가장 가까운 포즈를 찾을 수 있다.
         mean_dist_heap = []
         for _, sample_idx in max_dist_heap:
-            sample = self._pose_samples[sample_idx]
+            sample: PoseSample = self._pose_samples[sample_idx]
             mean_dist = min(
                 np.mean(np.abs(sample.embedding - pose_embedding) * self._axes_weights),
                 np.mean(np.abs(sample.embedding - flipped_pose_embedding) * self._axes_weights)
@@ -456,11 +459,11 @@ class PoseClassifier(object):
 class EMADictSmoothing(object):
     """포즈 분류를 매끄럽게 해 줍니다."""
 
-    def __init__(self, window_size: int = 10, alpha: float = 0.2):
+    def __init__(self, window_size: int=10, alpha: float=0.2):
         self._window_size = window_size
         self._alpha = alpha
 
-        self._data_in_window = []
+        self._data_in_window: list[dict] = []
 
     def __call__(self, data: dict[str, int]) -> dict[str, float]:
         """주어진 포즈의 분류를 매끄럽게 해 줍니다.
@@ -483,7 +486,7 @@ class EMADictSmoothing(object):
                     'pushups_up': 1.7,
                 }
         """
-        # 간단한 코드를 위하여 창 시작 부분에 새 데이터를 추가한다.
+        # 창 시작 부분에 새 데이터를 추가한다.
         self._data_in_window.insert(0, data)
         self._data_in_window = self._data_in_window[:self._window_size]
 
@@ -493,8 +496,11 @@ class EMADictSmoothing(object):
         # 부드럽게 한 데이터를 얻는다.
         smoothed_data = dict()
         for key in keys:
+
             factor, top_sum, bottom_sum = 1.0, 0.0, 0.0
+
             for data in self._data_in_window:
+
                 value = data[key] if key in data else 0.0
 
                 top_sum += factor * value
@@ -531,8 +537,8 @@ class RepetitionCounter(object):
     def __call__(self, pose_classification: dict[str, float]) -> int:
         """지정된 프레임까지 발생한 반복 횟수를 카운트합니다.
 
-        두 가지의 임계값을 사용합니다. 첫번째는 높은 쪽으로 올라가야 자세가 들어가고,
-        그 다음에 낮은 쪽으로 내려가야 자세가 나옵니다. 임계값 간의 차이로 인해
+        두 가지의 임계값을 사용합니다. 첫번째는 높은 쪽으로 올라가야 자세에 들어가고,
+        그 다음에 낮은 쪽으로 내려가야 자세에서 나옵니다. 임계값 간의 차이로 인해
         jittering을 예측할 수 있습니다. ( 임계값이 하나만 있는 경우에는 
         잘못된 카운트가 발생합니다. )
 
