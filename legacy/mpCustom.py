@@ -576,19 +576,19 @@ class PoseClassificationVisualizer(object):
 
     def __init__(
         self,
-        class_name,
-        plot_location_x=0.05,
-        plot_location_y=0.05,
-        plot_max_width=0.4,
-        plot_max_height=0.4,
-        plot_figsize=(9, 4),
-        plot_x_max=None,
-        plot_y_max=None,
-        counter_location_x=0.85,
-        counter_location_y=0.05,
-        counter_font_path='https://github.com/googlefonts/roboto/blob/main/src/hinted/Roboto-Regular.ttf?raw=true',
-        counter_font_color='red',
-        counter_font_size=0.15
+        class_name: str,
+        plot_location_x: int | float=0.05,
+        plot_location_y: int | float=0.05,
+        plot_max_width: int | float=0.4,
+        plot_max_height: int | float=0.4,
+        plot_figsize: tuple=(9, 4),
+        plot_x_max: int | float | None=None,
+        plot_y_max: int | float | None=None,
+        counter_location_x: int | float=0.85,
+        counter_location_y: int | float=0.05,
+        counter_font_path: str='https://github.com/googlefonts/roboto/blob/main/src/hinted/Roboto-Regular.ttf?raw=true',
+        counter_font_color: str='red',
+        counter_font_size: int | float=0.15
     ):
         self._class_name = class_name
         self._plot_location_x = plot_location_x
@@ -604,7 +604,7 @@ class PoseClassificationVisualizer(object):
         self._counter_font_color = counter_font_color
         self._counter_font_size = counter_font_size
 
-        self._counter_font = None
+        self._counter_font: ImageFont.FreeTypeFont | None = None
 
         self._pose_classification_history = []
         self._pose_classification_filtered_history = []
