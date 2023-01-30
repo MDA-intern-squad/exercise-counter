@@ -21,16 +21,16 @@ class CSVSaver:
     def __init__(self) -> None:
         pass
 
-    def __call__(self, filename: str, array: np.array):
+    def __call__(self, filename: str, array: np.ndarray):
         csv.writer(open(f'./{filename}.csv', 'w')).writerows(array)
 
 class Bootstrapper:
     def __init__(self, pose) -> None:
         self.pose = pose
 
-    def __call__(self, filename, pbar: bool = True) -> np.array:
+    def __call__(self, filename: str) -> np.ndarray:
         images = Bootstrapper.split_video(filename)
-        result = []
+        result: list[np.ndarray] = []
         with tqdm.tqdm(total=len(images), position=0, leave=False) as pbar:
             for image in images:
                 image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
@@ -67,7 +67,8 @@ class Bootstrapper:
 
 
 class AngleEmbeder:
-    angles = [["left_elbow", [11, 13, 15]],
+    angles = [
+        ["left_elbow", [11, 13, 15]],
         ["right_elbow", [12, 14, 16]],
         ["left_knee", [23, 25, 27]],
         ["right_knee", [24, 26, 28]],
@@ -80,17 +81,15 @@ class AngleEmbeder:
         ["left_shoulder_y", [13, 11, 12]],
         ["right_shoulder_y", [14, 12, 11]],
         ["left_ankle", [25, 27, 31]],
-        ["right_ankle", [26, 28, 32]]]
+        ["right_ankle", [26, 28, 32]]
+    ]
     
     
     def __init__(self) -> None:
         pass
 
     def __call__(self, landmark):
-        return np.array([round(AngleEmbeder.three_angle(
-            landmark[item[1][0]], 
-            landmark[item[1][1]], 
-            landmark[item[1][2]]), 5) for item in AngleEmbeder.angles], dtype=np.float32)
+        return np.array([round(AngleEmbeder.three_angle(*[landmark[item[1][i]] for i in range(3)]), 5) for item in AngleEmbeder.angles], dtype=np.float32)
 
     @staticmethod
     def three_angle(a, b, c):
@@ -128,7 +127,7 @@ class DistanceEmbeder:
     ]
     def __init__(self):
         pass
-    def __call__(self, landmarks):
+    def __call__(self, landmarks: np.ndarray) -> np.ndarray:
         return np.array([
             self._get_distance(
                 self._get_average_by_names(
@@ -224,14 +223,14 @@ class DistanceEmbeder:
         return lmk_to - lmk_from
     
 class KNNFinder:
-    def __init__(self, target, embeder, axes_weights: tuple or list=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
-        tmp_target = []
-        target_dict = target.copy()
+    def __init__(self, target: dict[str, np.ndarray], embeder: DistanceEmbeder, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
+        tmp_target: list[np.ndarray] = []
+        target_dict: dict[str, int] = {}
         
-        for k in target:
+        for k in target: # ['up', 'down']
             tmp_target.extend(target[k])
-            target_dict[k] = len(target[k])
-        print(tmp_target)
+            target_dict[k] = len(target[k]) # target_dict에는 해당 클래스의 프레임 개수를 넣어준다.
+
         self._target = tmp_target
         self._dict = target_dict
         self._pose_embedder = embeder
@@ -265,10 +264,10 @@ class KNNFinder:
             mean_dist_heap.append([mean_dist, sample_idx])
 
         mean_dist_heap = sorted(mean_dist_heap, key=lambda x: x[0])
-        mean_dist_heap = mean_dist_heap[:self._top_n_by_max_distance]
-        res = self._dict.copy()
-        for name in self._dict:
-            res[name] = 0
+        mean_dist_heap = mean_dist_heap[:self._top_n_by_mean_distance]
+
+        res = { name: 0 for name in self._dict }
+        
         for _, idx in mean_dist_heap:
             for name, ran in self._dict.items():
                 idx -= ran
@@ -276,13 +275,6 @@ class KNNFinder:
                     res[name] += 1
                     break
         return res
-            
-    def _find_max(self, target, asix):
-        for idx, t in enumerate(self.target):
-            pass
-
-    def _find_mean(self, target, asix):
-        pass
 
 def pose_flatter(landmarks):
     tmp_arr = []
