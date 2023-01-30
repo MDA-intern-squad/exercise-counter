@@ -223,7 +223,7 @@ class DistanceEmbeder:
         return lmk_to - lmk_from
     
 class KNNFinder:
-    def __init__(self, target: dict[str, np.ndarray], embeder: DistanceEmbeder, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
+    def __init__(self, target: dict[str, np.ndarray], embeder: AngleEmbeder | DistanceEmbeder, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
         tmp_target: list[np.ndarray] = []
         target_dict: dict[str, int] = dict()
         
@@ -239,10 +239,27 @@ class KNNFinder:
         self._top_n_by_mean_distance = top_n_by_mean_distance
 
     def __call__(self, pose_landmarks: np.ndarray) -> dict[str, int]:
-        pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([100, 100, 100])))
-        flipped_pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([-100, 100, 100])))
+        """주어진 포즈를 분류합니다.
+
+        분류 작업은 두 단계로 이루어져 있습니다:
+            * 먼저, MAX 거리별로 상위 N개의 샘플을 선택합니다.
+            * 그런 다음, 평균 거리를 기준으로 상위 N개의 샘플을 선택합니다.
+            이전 단계에서 이상치를 제거하였기 때문에 평균적으로 가까운 표본을 선택할 수 있습니다.
+
+        Args:
+            pose_landmarks: (N, 3)과 같은 shape의 3D 랜드마크가 있는 Numpy 배열을 인자로 받습니다.
+
+        Returns:
+            데이터베이스에서 가장 가까운 포즈 샘플 수가 포함된 Dictionary를 반환합니다. 예시:
+                {
+                    'down': 7,
+                    'up': 2,
+                }
+        """
+        pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([100, 100, 100]))) # 100을 곱해주는 이유는 편한 디버깅을 위함
+        flipped_pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([-100, 100, 100]))) # 좌우반전된 임베딩
         
-        max_dist_heap = []
+        max_dist_heap = [] # 최대값을 기준으로 정렬
 
         for sample_idx, sample in enumerate(self._target):
             max_dist = min(
@@ -252,9 +269,10 @@ class KNNFinder:
             max_dist_heap.append([max_dist, sample_idx])
 
         max_dist_heap = sorted(max_dist_heap, key=lambda x: x[0])
-        max_dist_heap = max_dist_heap[:self._top_n_by_max_distance]
+        max_dist_heap = max_dist_heap[:self._top_n_by_max_distance] # 값을 정렬하고, top_n_by_max_distance 번째 작은 값 까지만 남긴다.
 
-        mean_dist_heap = []
+        mean_dist_heap = [] # 평균값을 기준으로 정렬
+
         for _, sample_idx in max_dist_heap:
             sample = self._target[sample_idx]
             mean_dist = min(
@@ -264,13 +282,16 @@ class KNNFinder:
             mean_dist_heap.append([mean_dist, sample_idx])
 
         mean_dist_heap = sorted(mean_dist_heap, key=lambda x: x[0])
-        mean_dist_heap = mean_dist_heap[:self._top_n_by_mean_distance]
+        mean_dist_heap = mean_dist_heap[:self._top_n_by_mean_distance] # 값을 정렬하고, top_n_by_mean_distance 번째 작은 값 까지만 남긴다.
 
         res = { name: 0 for name in self._dict }
         
         for _, idx in mean_dist_heap:
-            for name, ran in self._dict.items():
-                idx -= ran
+            for name, frames in self._dict.items():
+                # idx에 올 수 있는 가장 최댓값은 dict에 들어있는 두 frames들의 합이다.
+                # 각 차례마다 현재 차례의 힙 원소의 idx에서 현재 클래스의 frames 값을 빼 본다.
+                # 만약 0 이하로 내려가는 순간 현재 차례의 클래스이다.
+                idx -= frames
                 if idx <= 0:
                     res[name] += 1
                     break
