@@ -20,20 +20,21 @@ csv_loader = util.CSVLoader()
 up = csv_loader('./data/test/up.csv')
 down = csv_loader('./data/test/down.csv')
 
-# [frames: [ landmarks: [ xyz: int, int, int ], [], []... x33 ], [], [].. ]
-
-embeder = util.AngleEmbeder()
+embeder = util.PoseEmbedderByAngle()
 
 # [ embeddings: [ xyz: float, float, float ], [], [] ... x23 ]
 embeded_up = np.array([embeder(i) for i in up], dtype=np.float32)
 embeded_down = np.array([embeder(i) for i in down], dtype=np.float32)
 
-classifier = util.KNNFinder({
-    "up": embeded_up,
-    "down": embeded_down
-}, embeder,
-top_n_by_max_distance = 300, 
-top_n_by_mean_distance = 49)
+classifier = util.PoseClassifierByKNN(
+    {
+        'up': embeded_up,
+        'down': embeded_down
+    },
+    embeder,
+    top_n_by_max_distance=300, 
+    top_n_by_mean_distance=49
+)
 
 cap = cv.VideoCapture('./data/test/test4.mp4')
 pose = mp_pose.Pose(model_complexity=1)
