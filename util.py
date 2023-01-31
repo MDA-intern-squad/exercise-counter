@@ -7,6 +7,16 @@ import tqdm
 import csv
 import math
 
+import tensorflow as tf
+from keras.datasets.mnist import load_data
+from keras.models import Sequential
+from keras import models
+from keras.layers import Dense, Input, Flatten, Dropout
+from keras.utils import to_categorical, plot_model
+from sklearn.model_selection import train_test_split
+from keras.optimizers.legacy.sgd import SGD
+from keras.optimizers.legacy.adam import Adam
+
 mp_pose = mp.solutions.pose
 
 class CSVLoader:
@@ -304,3 +314,24 @@ def pose_flatter(landmarks):
         tmp_arr.append(landmarks[landmark].y)
         tmp_arr.append(landmarks[landmark].z)
     return np.array(tmp_arr, dtype=np.float32)
+
+class ModelComplier:
+    def __init__(self, datasets: dict[int or float, np.ndarray]) -> None:
+        self._model = Sequential([
+            Dense(128, activation='tanh'),
+            Dropout(0.1),
+            Dense(32, activation='tanh'),
+            Dropout(0.1),
+            Dense(8, activation='tanh'),
+            Dense(1, activation='sigmoid')
+        ])
+    def compile():
+        pass
+    def save():
+        pass
+    def input():
+        pass
+
+class ModelLoader:
+    def __init__(self) -> None:
+        pass
