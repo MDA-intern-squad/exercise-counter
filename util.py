@@ -32,7 +32,7 @@ class CSVSaver:
         csv.writer(open(f'./{filename}.csv', 'w')).writerows(array)
 
 class Bootstrapper:
-    def __init__(self, pose) -> None:
+    def __init__(self, pose):
         self.pose = pose
 
     def __call__(self, filename: str) -> np.ndarray:
@@ -84,24 +84,24 @@ class Bootstrapper:
 
 class PoseEmbedderByAngle:
     angles = [
-        ["left_elbow", [11, 13, 15]],
-        ["right_elbow", [12, 14, 16]],
-        ["left_knee", [23, 25, 27]],
-        ["right_knee", [24, 26, 28]],
-        ["left_hip_y", [25, 23, 24]],
-        ["right_hip_y", [26, 24, 23]],
-        ["left_hip_x", [11, 23, 25]],
-        ["right_hip_x", [12, 24, 26]],
-        ["left_shoulder_x", [13, 11, 23]],
-        ["right_shoulder_x", [14, 12, 24]],
-        ["left_shoulder_y", [13, 11, 12]],
-        ["right_shoulder_y", [14, 12, 11]],
-        ["left_ankle", [25, 27, 31]],
-        ["right_ankle", [26, 28, 32]]
+        ['left_elbow', [11, 13, 15]],
+        ['right_elbow', [12, 14, 16]],
+        ['left_knee', [23, 25, 27]],
+        ['right_knee', [24, 26, 28]],
+        ['left_hip_y', [25, 23, 24]],
+        ['right_hip_y', [26, 24, 23]],
+        ['left_hip_x', [11, 23, 25]],
+        ['right_hip_x', [12, 24, 26]],
+        ['left_shoulder_x', [13, 11, 23]],
+        ['right_shoulder_x', [14, 12, 24]],
+        ['left_shoulder_y', [13, 11, 12]],
+        ['right_shoulder_y', [14, 12, 11]],
+        ['left_ankle', [25, 27, 31]],
+        ['right_ankle', [26, 28, 32]]
     ]
     
     
-    def __init__(self) -> None:
+    def __init__(self):
         pass
 
     def __call__(self, landmark):
