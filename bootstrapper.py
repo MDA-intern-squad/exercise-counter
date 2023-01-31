@@ -2,7 +2,9 @@ import util
 import mediapipe as mp
 mp_pose = mp.solutions.pose
 
-bootstrapper = util.Bootstrapper(mp_pose.Pose(model_complexity=1))
+bootstrapper = util.Bootstrapper(mp_pose.Pose(            
+    model_complexity=2,
+    static_image_mode=True))
 up = bootstrapper('./data/test/up.mp4')
 down = bootstrapper('./data/test/down.mp4')
 

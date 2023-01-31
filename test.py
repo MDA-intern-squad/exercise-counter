@@ -6,14 +6,6 @@ import cv2 as cv
 import time
 mp_pose = mp.solutions.pose
 
-# bootstrapper = util.Bootstrapper(mp_pose.Pose(model_complexity=1))
-# up = bootstrapper('./data/test/up.mp4')
-# down = bootstrapper('./data/test/down.mp4')
-
-# csv_saver = util.CSVSaver()
-# csv_saver('./data/test/up', up)
-# csv_saver('./data/test/down', down)
-
 csv_loader = util.CSVLoader()
 
 # [ frames: [ landmarks: [ xyz: int, int, int ], [], []... x33 ], [], [].. ]
@@ -26,18 +18,21 @@ embeder = util.PoseEmbedderByAngle()
 embeded_up = np.array([embeder(i) for i in up], dtype=np.float32)
 embeded_down = np.array([embeder(i) for i in down], dtype=np.float32)
 
-classifier = util.PoseClassifierByKNN(
-    {
-        'up': embeded_up,
-        'down': embeded_down
-    },
-    embeder,
-    top_n_by_max_distance=300, 
-    top_n_by_mean_distance=49
-)
+# classifier = util.PoseClassifierByKNN(
+#     {
+#         'up': embeded_up,
+#         'down': embeded_down
+#     },
+#     embeder,
+#     top_n_by_max_distance=300, 
+#     top_n_by_mean_distance=49
+# )
+
+classifier = util.PoseClassifierByML('./model.h5', embeder)
 
 cap = cv.VideoCapture('./data/test/test4.mp4')
-pose = mp_pose.Pose(model_complexity=1)
+pose = mp_pose.Pose(model_complexity=2,
+                    static_image_mode=False)
 
 while True:
     ret, frame = cap.read()
@@ -50,8 +45,6 @@ while True:
     if pose_landmarks is not None:
         pose_world_landmarks = result.pose_world_landmarks.landmark
         pose_world_landmarks = np.array([[lmk.x, lmk.y, lmk.z] for lmk in pose_world_landmarks], dtype=np.float32)
-        bef_time = time.time()
-        # print((time.time() - bef_time) * 1000)
         output_frame = frame.copy()
         mp_drawing.draw_landmarks(
             image=output_frame,

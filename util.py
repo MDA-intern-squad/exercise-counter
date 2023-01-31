@@ -8,14 +8,11 @@ import csv
 import math
 
 import tensorflow as tf
-from keras.datasets.mnist import load_data
 from keras.models import Sequential
-from keras import models
 from keras.layers import Dense, Input, Flatten, Dropout
-from keras.utils import to_categorical, plot_model
-from sklearn.model_selection import train_test_split
 from keras.optimizers.legacy.sgd import SGD
 from keras.optimizers.legacy.adam import Adam
+from keras import models
 
 mp_pose = mp.solutions.pose
 
@@ -54,6 +51,15 @@ class Bootstrapper:
                 pbar.update()
         
         return np.array(result, dtype=np.float32) * 100
+    
+    @staticmethod
+    def pose_flatter(landmarks):
+        tmp_arr = []
+        for landmark in mp_pose.PoseLandmark:
+            tmp_arr.append(landmarks[landmark].x)
+            tmp_arr.append(landmarks[landmark].y)
+            tmp_arr.append(landmarks[landmark].z)
+        return np.array(tmp_arr, dtype=np.float32)
 
             
     @staticmethod
@@ -307,16 +313,8 @@ class PoseClassifierByKNN:
                     break
         return res
 
-def pose_flatter(landmarks):
-    tmp_arr = []
-    for landmark in mp_pose.PoseLandmark:
-        tmp_arr.append(landmarks[landmark].x)
-        tmp_arr.append(landmarks[landmark].y)
-        tmp_arr.append(landmarks[landmark].z)
-    return np.array(tmp_arr, dtype=np.float32)
-
 class ModelComplier:
-    def __init__(self, datasets: dict[int or float, np.ndarray]) -> None:
+    def __init__(self) -> None:
         self._model = Sequential([
             Dense(128, activation='tanh'),
             Dropout(0.1),
@@ -325,13 +323,31 @@ class ModelComplier:
             Dense(8, activation='tanh'),
             Dense(1, activation='sigmoid')
         ])
-    def compile():
-        pass
-    def save():
-        pass
-    def input():
-        pass
+    def compile(self, datasets: dict[int or float, np.ndarray]):
+        self._model.compile(optimizer=Adam(),
+          loss=tf.keras.losses.binary_crossentropy,
+          metrics=['accuracy'])
 
-class ModelLoader:
-    def __init__(self) -> None:
-        pass
+        xdata = []
+        ydata = []
+
+        for k, v in datasets.items():
+            xdata.extend(v)
+            ydata.extend([k for _ in range(len(v))])
+            
+        return self._model.fit(np.array(xdata), np.array(ydata), epochs=64, batch_size=32)
+        
+    def save(self, filename: str):
+        self._model.save(filename)
+
+
+class PoseClassifierByML:
+    def __init__(self, modelfile: str, embeder: PoseEmbedderByAngle or PoseEmbedderByDistance):
+        self._model = models.load_model(modelfile)
+        self._model.summary()
+        self._embeder = embeder
+
+    def __call__(self, pose_landmarks: np.ndarray):
+        predict_result = self._model.predict(np.array([self._embeder(pose_landmarks * np.array([100, 100, 100]))], dtype=np.float32), verbose=0)[0][0]
+        # return {"up": 10, "down": 0}
+        return {"up": 10, "down": 0} if predict_result > .1 else {"up": 0, "down": 10}
