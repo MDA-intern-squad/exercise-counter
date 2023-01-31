@@ -239,7 +239,7 @@ class PoseEmbedderByDistance:
         return lmk_to - lmk_from
     
 class PoseClassifierByKNN:
-    def __init__(self, target: dict[str, np.ndarray], embeder: PoseEmbedderByAngle or PoseEmbedderByDistance, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
+    def __init__(self, target: dict[str, np.ndarray], embeder: PoseEmbedderByAngle | PoseEmbedderByDistance, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
         tmp_target: list[np.ndarray] = []
         target_dict: dict[str, int] = dict()
         
@@ -323,7 +323,7 @@ class ModelComplier:
             Dense(8, activation='tanh'),
             Dense(1, activation='sigmoid')
         ])
-    def compile(self, datasets: dict[int or float, np.ndarray]):
+    def compile(self, datasets: dict[int | float, np.ndarray]):
         self._model.compile(optimizer=Adam(),
           loss=tf.keras.losses.binary_crossentropy,
           metrics=['accuracy'])
@@ -342,7 +342,7 @@ class ModelComplier:
 
 
 class PoseClassifierByML:
-    def __init__(self, modelfile: str, embeder: PoseEmbedderByAngle or PoseEmbedderByDistance):
+    def __init__(self, modelfile: str, embeder: PoseEmbedderByAngle | PoseEmbedderByDistance):
         self._model = models.load_model(modelfile)
         self._model.summary()
         self._embeder = embeder
@@ -350,4 +350,4 @@ class PoseClassifierByML:
     def __call__(self, pose_landmarks: np.ndarray):
         predict_result = self._model.predict(np.array([self._embeder(pose_landmarks * np.array([100, 100, 100]))], dtype=np.float32), verbose=0)[0][0]
         # return {"up": 10, "down": 0}
-        return {"up": 10, "down": 0} if predict_result > .1 else {"up": 0, "down": 10}
+        return { "up": 10, "down": 0 } if predict_result > 0.1 else { "up": 0, "down": 10 }
