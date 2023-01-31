@@ -226,7 +226,7 @@ class PoseEmbedderByDistance:
             # self._get_distance(
             #     self._get_average_by_names(landmarks, 'right_wrist', 'right_ankle'),
             #     landmarks[self._landmark_names.index('right_hip')]),
-        ])
+        ]).flatten()
     def _get_average_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
         lmk_from = landmarks[PoseEmbedderByDistance._landmark_names.index(name_from)]
         lmk_to = landmarks[PoseEmbedderByDistance._landmark_names.index(name_to)]
@@ -272,9 +272,15 @@ class PoseClassifierByKNN:
                     'up': 2,
                 }
         """
+        if type(self._pose_embedder) == PoseEmbedderByAngle:
+            pass
+        elif type(self._pose_embedder) == PoseEmbedderByDistance:
+            pass
+
         pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([100, 100, 100]))) # 100을 곱해주는 이유는 편한 디버깅을 위함
         flipped_pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([-100, 100, 100]))) # 좌우반전된 임베딩
-        
+
+
         max_dist_heap = [] # 최대값을 기준으로 정렬
 
         for sample_idx, sample in enumerate(self._target):
