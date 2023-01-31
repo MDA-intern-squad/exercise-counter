@@ -32,7 +32,7 @@ class CSVSaver:
         csv.writer(open(f'./{filename}.csv', 'w')).writerows(array)
 
 class Bootstrapper:
-    def __init__(self, pose) -> None:
+    def __init__(self, pose):
         self.pose = pose
 
     def __call__(self, filename: str) -> np.ndarray:
@@ -84,24 +84,24 @@ class Bootstrapper:
 
 class PoseEmbedderByAngle:
     angles = [
-        ["left_elbow", [11, 13, 15]],
-        ["right_elbow", [12, 14, 16]],
-        ["left_knee", [23, 25, 27]],
-        ["right_knee", [24, 26, 28]],
-        ["left_hip_y", [25, 23, 24]],
-        ["right_hip_y", [26, 24, 23]],
-        ["left_hip_x", [11, 23, 25]],
-        ["right_hip_x", [12, 24, 26]],
-        ["left_shoulder_x", [13, 11, 23]],
-        ["right_shoulder_x", [14, 12, 24]],
-        ["left_shoulder_y", [13, 11, 12]],
-        ["right_shoulder_y", [14, 12, 11]],
-        ["left_ankle", [25, 27, 31]],
-        ["right_ankle", [26, 28, 32]]
+        ['left_elbow', [11, 13, 15]],
+        ['right_elbow', [12, 14, 16]],
+        ['left_knee', [23, 25, 27]],
+        ['right_knee', [24, 26, 28]],
+        ['left_hip_y', [25, 23, 24]],
+        ['right_hip_y', [26, 24, 23]],
+        ['left_hip_x', [11, 23, 25]],
+        ['right_hip_x', [12, 24, 26]],
+        ['left_shoulder_x', [13, 11, 23]],
+        ['right_shoulder_x', [14, 12, 24]],
+        ['left_shoulder_y', [13, 11, 12]],
+        ['right_shoulder_y', [14, 12, 11]],
+        ['left_ankle', [25, 27, 31]],
+        ['right_ankle', [26, 28, 32]]
     ]
     
     
-    def __init__(self) -> None:
+    def __init__(self):
         pass
 
     def __call__(self, landmark):
@@ -226,7 +226,7 @@ class PoseEmbedderByDistance:
             # self._get_distance(
             #     self._get_average_by_names(landmarks, 'right_wrist', 'right_ankle'),
             #     landmarks[self._landmark_names.index('right_hip')]),
-        ])
+        ]).flatten()
     def _get_average_by_names(self, landmarks: np.ndarray, name_from: str, name_to: str) -> np.ndarray:
         lmk_from = landmarks[PoseEmbedderByDistance._landmark_names.index(name_from)]
         lmk_to = landmarks[PoseEmbedderByDistance._landmark_names.index(name_to)]
@@ -239,7 +239,7 @@ class PoseEmbedderByDistance:
         return lmk_to - lmk_from
     
 class PoseClassifierByKNN:
-    def __init__(self, target: dict[str, np.ndarray], embeder: PoseEmbedderByAngle or PoseEmbedderByDistance, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
+    def __init__(self, target: dict[str, np.ndarray], embeder: PoseEmbedderByAngle | PoseEmbedderByDistance, axes_weights: tuple=(1.0, 1.0, 0.2), top_n_by_max_distance: int=30, top_n_by_mean_distance: int=9):
         tmp_target: list[np.ndarray] = []
         target_dict: dict[str, int] = dict()
         
@@ -272,9 +272,15 @@ class PoseClassifierByKNN:
                     'up': 2,
                 }
         """
+        if type(self._pose_embedder) == PoseEmbedderByAngle:
+            pass
+        elif type(self._pose_embedder) == PoseEmbedderByDistance:
+            pass
+
         pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([100, 100, 100]))) # 100을 곱해주는 이유는 편한 디버깅을 위함
         flipped_pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([-100, 100, 100]))) # 좌우반전된 임베딩
-        
+
+
         max_dist_heap = [] # 최대값을 기준으로 정렬
 
         for sample_idx, sample in enumerate(self._target):
@@ -323,7 +329,7 @@ class ModelComplier:
             Dense(8, activation='tanh'),
             Dense(1, activation='sigmoid')
         ])
-    def compile(self, datasets: dict[int or float, np.ndarray]):
+    def compile(self, datasets: dict[int | float, np.ndarray]):
         self._model.compile(optimizer=Adam(),
           loss=tf.keras.losses.binary_crossentropy,
           metrics=['accuracy'])
@@ -342,7 +348,7 @@ class ModelComplier:
 
 
 class PoseClassifierByML:
-    def __init__(self, modelfile: str, embeder: PoseEmbedderByAngle or PoseEmbedderByDistance):
+    def __init__(self, modelfile: str, embeder: PoseEmbedderByAngle | PoseEmbedderByDistance):
         self._model = models.load_model(modelfile)
         self._model.summary()
         self._embeder = embeder
@@ -350,4 +356,4 @@ class PoseClassifierByML:
     def __call__(self, pose_landmarks: np.ndarray):
         predict_result = self._model.predict(np.array([self._embeder(pose_landmarks * np.array([100, 100, 100]))], dtype=np.float32), verbose=0)[0][0]
         # return {"up": 10, "down": 0}
-        return {"up": 10, "down": 0} if predict_result > .1 else {"up": 0, "down": 10}
+        return { "up": 10, "down": 0 } if predict_result > 0.1 else { "up": 0, "down": 10 }
