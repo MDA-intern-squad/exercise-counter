@@ -50,7 +50,7 @@ class Bootstrapper:
                 result.append(np.array(tmp_arr, dtype=np.float32))
                 pbar.update()
         
-        return np.array(result, dtype=np.float32) * 100
+        return np.array(result, dtype=np.float32)
     
     @staticmethod
     def pose_flatter(landmarks):
@@ -202,10 +202,10 @@ class PoseEmbedderByDistance:
                 landmarks, 'right_shoulder', 'right_ankle'
             ),
             self._get_distance_by_names(
-                landmarks, 'left_hip', 'left_wrist'
+                landmarks, 'left_hip', 'right_wrist'
             ),
             self._get_distance_by_names(
-                landmarks, 'right_hip', 'right_wrist'
+                landmarks, 'right_hip', 'left_wrist'
             ),
             self._get_distance_by_names(
                 landmarks, 'left_elbow', 'right_elbow'
@@ -272,23 +272,20 @@ class PoseClassifierByKNN:
                     'up': 2,
                 }
         """
-        if type(self._pose_embedder) == PoseEmbedderByAngle:
-            pass
-        elif type(self._pose_embedder) == PoseEmbedderByDistance:
-            pass
 
-        pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([100, 100, 100]))) # 100을 곱해주는 이유는 편한 디버깅을 위함
-        flipped_pose_embedding = self._pose_embedder(np.array(pose_landmarks * np.array([-100, 100, 100]))) # 좌우반전된 임베딩
+        pose_embedding = self._pose_embedder(pose_landmarks) # 100을 곱해주는 이유는 편한 디버깅을 위함
+        # flipped_pose_embedding = self._pose_embedder(pose_landmarks * np.array([-100, 100, 100])) # 좌우반전된 임베딩
 
 
         max_dist_heap = [] # 최대값을 기준으로 정렬
 
         for sample_idx, sample in enumerate(self._target):
-            max_dist = min(
-                np.max(np.abs(sample - pose_embedding)),
-                np.max(np.abs(sample - flipped_pose_embedding))
-            )
-            max_dist_heap.append([max_dist, sample_idx])
+            # max_dist = min(
+            #    ,
+            #     np.max(np.abs(sample - flipped_pose_embedding))
+            # )
+            # max_dist_heap.append([max_dist, sample_idx])
+            max_dist_heap.append([np.max(np.abs(sample - pose_embedding)), sample_idx])
 
         max_dist_heap = sorted(max_dist_heap, key=lambda x: x[0])
         max_dist_heap = max_dist_heap[:self._top_n_by_max_distance] # 값을 정렬하고, top_n_by_max_distance 번째 작은 값 까지만 남긴다.
@@ -297,11 +294,12 @@ class PoseClassifierByKNN:
 
         for _, sample_idx in max_dist_heap:
             sample = self._target[sample_idx]
-            mean_dist = min(
-                np.mean(np.abs(sample - pose_embedding)),
-                np.mean(np.abs(sample - flipped_pose_embedding))
-            )
-            mean_dist_heap.append([mean_dist, sample_idx])
+            # mean_dist = min(
+            #     np.mean(np.abs(sample - pose_embedding)),
+            #     np.mean(np.abs(sample - flipped_pose_embedding))
+            # )
+            # mean_dist_heap.append([mean_dist, sample_idx])
+            mean_dist_heap.append([np.mean(np.abs(sample - pose_embedding)), sample_idx])
 
         mean_dist_heap = sorted(mean_dist_heap, key=lambda x: x[0])
         mean_dist_heap = mean_dist_heap[:self._top_n_by_mean_distance] # 값을 정렬하고, top_n_by_mean_distance 번째 작은 값 까지만 남긴다.
