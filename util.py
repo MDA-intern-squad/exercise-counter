@@ -353,4 +353,5 @@ class PoseClassifierByML:
 
     def __call__(self, pose_landmarks: np.ndarray):
         predict_result = self._model.predict(np.array([self._embeder(pose_landmarks * np.array([100, 100, 100]))], dtype=np.float32), verbose=0)[0][0]
-        return { "up": 10, "down": 0 } if predict_result > 0.1 else { "up": 0, "down": 10 }
+        # return {"up": 10, "down": 0}
+        return { 'up': 10, 'down': 0 } if predict_result > 0.1 else { 'up': 0, 'down': 10 }
