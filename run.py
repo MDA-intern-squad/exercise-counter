@@ -31,8 +31,14 @@ embeded_down = np.array([embeder(i) for i in down], dtype=np.float32)
 classifier = util.PoseClassifierByML('./model.h5', embeder)
 
 cap = cv.VideoCapture('./data/test/test3.mp4')
-pose = mp_pose.Pose(model_complexity=1,
-                    static_image_mode=False)
+                    
+visualizer = util.PoseClassificationVisualizer(
+    class_name='up',
+    plot_x_max=cap.get(cv.CAP_PROP_FRAME_COUNT),
+    plot_y_max=10
+)
+
+pose = mp_pose.Pose(model_complexity=1, static_image_mode=False)
 
 while True:
     ret, frame = cap.read()
@@ -59,6 +65,12 @@ while True:
             if value > maxValue:
                 currentState = key
                 maxValue = value
+        output_frame = visualizer(
+                frame=output_frame,
+                pose_classification=classification,
+                pose_classification_filtered=None,
+                repetitions_count=None
+        )
         cv.putText(output_frame, currentState, (50, 350), cv.FONT_HERSHEY_PLAIN, 10, (0, 0, 255), 10, cv.LINE_AA)
         cv.imshow('ui', output_frame)
     key = cv.waitKey(20)
