@@ -274,18 +274,18 @@ class PoseClassifierByKNN:
         """
 
         pose_embedding = self._pose_embedder(pose_landmarks) # 100을 곱해주는 이유는 편한 디버깅을 위함
-        # flipped_pose_embedding = self._pose_embedder(pose_landmarks * np.array([-100, 100, 100])) # 좌우반전된 임베딩
+        flipped_pose_embedding = self._pose_embedder(pose_landmarks * np.array([-1, 1, 1])) # 좌우반전된 임베딩
 
 
         max_dist_heap = [] # 최대값을 기준으로 정렬
 
         for sample_idx, sample in enumerate(self._target):
-            # max_dist = min(
-            #    ,
-            #     np.max(np.abs(sample - flipped_pose_embedding))
-            # )
-            # max_dist_heap.append([max_dist, sample_idx])
-            max_dist_heap.append([np.max(np.abs(sample - pose_embedding)), sample_idx])
+            max_dist = min(
+                np.max(np.abs(sample - pose_embedding)),
+                np.max(np.abs(sample - flipped_pose_embedding))
+            )
+            max_dist_heap.append([max_dist, sample_idx])
+            # max_dist_heap.append([np.max(np.abs(sample - pose_embedding)), sample_idx])
 
         max_dist_heap = sorted(max_dist_heap, key=lambda x: x[0])
         max_dist_heap = max_dist_heap[:self._top_n_by_max_distance] # 값을 정렬하고, top_n_by_max_distance 번째 작은 값 까지만 남긴다.
@@ -294,12 +294,12 @@ class PoseClassifierByKNN:
 
         for _, sample_idx in max_dist_heap:
             sample = self._target[sample_idx]
-            # mean_dist = min(
-            #     np.mean(np.abs(sample - pose_embedding)),
-            #     np.mean(np.abs(sample - flipped_pose_embedding))
-            # )
-            # mean_dist_heap.append([mean_dist, sample_idx])
-            mean_dist_heap.append([np.mean(np.abs(sample - pose_embedding)), sample_idx])
+            mean_dist = min(
+                np.mean(np.abs(sample - pose_embedding)),
+                np.mean(np.abs(sample - flipped_pose_embedding))
+            )
+            mean_dist_heap.append([mean_dist, sample_idx])
+            # mean_dist_heap.append([np.mean(np.abs(sample - pose_embedding)), sample_idx])
 
         mean_dist_heap = sorted(mean_dist_heap, key=lambda x: x[0])
         mean_dist_heap = mean_dist_heap[:self._top_n_by_mean_distance] # 값을 정렬하고, top_n_by_mean_distance 번째 작은 값 까지만 남긴다.
@@ -353,5 +353,4 @@ class PoseClassifierByML:
 
     def __call__(self, pose_landmarks: np.ndarray):
         predict_result = self._model.predict(np.array([self._embeder(pose_landmarks * np.array([100, 100, 100]))], dtype=np.float32), verbose=0)[0][0]
-        # return {"up": 10, "down": 0}
         return { "up": 10, "down": 0 } if predict_result > 0.1 else { "up": 0, "down": 10 }

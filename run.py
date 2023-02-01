@@ -18,20 +18,20 @@ embeder = util.PoseEmbedderByDistance()
 embeded_up = np.array([embeder(i) for i in up], dtype=np.float32)
 embeded_down = np.array([embeder(i) for i in down], dtype=np.float32)
 
-classifier = util.PoseClassifierByKNN(
-    {
-        'up': embeded_up,
-        'down': embeded_down
-    },
-    embeder,
-    top_n_by_max_distance=300, 
-    top_n_by_mean_distance=49
-)
+# classifier = util.PoseClassifierByKNN(
+#     {
+#         'up': embeded_up,
+#         'down': embeded_down
+#     },
+#     embeder,
+#     top_n_by_max_distance=100, 
+#     top_n_by_mean_distance=31
+# )
 
-# classifier = util.PoseClassifierByML('./model.h5', embeder)
+classifier = util.PoseClassifierByML('./model.h5', embeder)
 
-cap = cv.VideoCapture('./data/test/test4.mp4')
-pose = mp_pose.Pose(model_complexity=2,
+cap = cv.VideoCapture('./data/test/test3.mp4')
+pose = mp_pose.Pose(model_complexity=1,
                     static_image_mode=False)
 
 while True:
@@ -51,7 +51,9 @@ while True:
             landmark_list=pose_landmarks,
             connections=mp_pose.POSE_CONNECTIONS
         )
+        t = time.time()
         classification = classifier(pose_world_landmarks) # 분류가 완료된 dict
+        print((time.time() - t) * 1000)
         currentState, maxValue = '', -float('inf') # 현재 상태(up, down)를 저장할 변수, 그 상태의 값
         for key, value in classification.items():
             if value > maxValue:
