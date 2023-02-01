@@ -61,10 +61,12 @@ while True:
             if value > maxValue:
                 currentState = key
                 maxValue = value
-
-        count = counter(classification)
-        vis = visualizer(output_frame, classification, classification, count)
-        
-        # cv.putText(output_frame, currentState, (50, 350), cv.FONT_HERSHEY_PLAIN, 10, (0, 0, 255), 10, cv.LINE_AA)
-        cv.imshow('ui', np.array(vis))
-    key = cv.waitKey(1)
+        output_frame = visualizer(
+                frame=output_frame,
+                pose_classification=classification,
+                pose_classification_filtered=None,
+                repetitions_count=None
+        )
+        cv.putText(output_frame, currentState, (50, 350), cv.FONT_HERSHEY_PLAIN, 10, (0, 0, 255), 10, cv.LINE_AA)
+        cv.imshow('ui', output_frame)
+    key = cv.waitKey(20)
