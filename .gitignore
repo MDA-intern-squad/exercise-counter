@@ -3,5 +3,6 @@
 .DS_Store
 /__pycache__
 /dist
+/legacy/dist
 /.ipynb_checkpoints
 *.h5
