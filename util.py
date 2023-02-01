@@ -8,15 +8,11 @@ import tqdm
 import csv
 import math
 import io
-<<<<<<< HEAD
 
 from PIL import Image, ImageFont, ImageDraw
 import requests
 import cv2
 from matplotlib import pyplot as plt
-=======
-import requests
->>>>>>> 9595b6665bb7e051bf77a0b74b189bb3cb37cca0
 
 import tensorflow as tf
 from keras.models import Sequential
@@ -370,7 +366,6 @@ class PoseClassifierByML:
         # return {"up": 10, "down": 0}
         return { 'up': 10, 'down': 0 } if predict_result > 0.1 else { 'up': 0, 'down': 10 }
 
-<<<<<<< HEAD
 
 class EMADictSmoothing(object):
     """포즈 분류를 매끄럽게 해 줍니다."""
@@ -487,8 +482,6 @@ class RepetitionCounter(object):
         return self._n_repeats
 
 
-=======
->>>>>>> 9595b6665bb7e051bf77a0b74b189bb3cb37cca0
 class PoseClassificationVisualizer(object):
     """모든 프레임에 대한 분류를 추적하고 렌더링합니다."""
 
@@ -531,13 +524,8 @@ class PoseClassificationVisualizer(object):
         """주어진 프레임까지 포즈 분류 및 카운터를 렌더합니다."""
         # classification 기록 확장
         self._pose_classification_history.append(pose_classification)
-<<<<<<< HEAD
-        self._pose_classification_filtered_history.append(
-            pose_classification_filtered)
-=======
         # self._pose_classification_filtered_history.append(
         #     pose_classification_filtered)
->>>>>>> 9595b6665bb7e051bf77a0b74b189bb3cb37cca0
 
         # classification plot과 counter가 있는 프레임 출력
         output_img = Image.fromarray(frame)
@@ -557,21 +545,6 @@ class PoseClassificationVisualizer(object):
             )
         )
 
-<<<<<<< HEAD
-        # count 그리기
-        output_img_draw = ImageDraw.Draw(output_img)
-        if self._counter_font is None:
-            font_size = int(output_height * self._counter_font_size)
-            font_request = requests.get(self._counter_font_path, allow_redirects=True)
-            self._counter_font = ImageFont.truetype(io.BytesIO(font_request.content), size=font_size)
-
-        output_img_draw.text(
-            (output_width * self._counter_location_x, output_height * self._counter_location_y),
-            str(repetitions_count),
-            font=self._counter_font,
-            fill=self._counter_font_color
-        )
-=======
         # # count 그리기
         # output_img_draw = ImageDraw.Draw(output_img)
         # if self._counter_font is None:
@@ -585,18 +558,13 @@ class PoseClassificationVisualizer(object):
         #     font=self._counter_font,
         #     fill=self._counter_font_color
         # )
->>>>>>> 9595b6665bb7e051bf77a0b74b189bb3cb37cca0
 
         return output_img
 
     def _plot_classification_history(self, output_width, output_height):
         fig = plt.figure(figsize=self._plot_figsize)
 
-<<<<<<< HEAD
-        for classification_history in [self._pose_classification_history, self._pose_classification_filtered_history]:
-=======
         for classification_history in [self._pose_classification_history]:
->>>>>>> 9595b6665bb7e051bf77a0b74b189bb3cb37cca0
             y = []
             for classification in classification_history:
                 if classification is None:
