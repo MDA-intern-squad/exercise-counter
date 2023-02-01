@@ -17,20 +17,22 @@ embeder = util.PoseEmbedderByDistance()
 # [ embeddings: [ xyz: float, float, float ], [], [] ... x23 ]
 embeded_up = np.array([embeder(i) for i in up], dtype=np.float32)
 embeded_down = np.array([embeder(i) for i in down], dtype=np.float32)
+classifier = util.PoseClassifierByKNN(
+    {
+        'up': embeded_up,
+        'down': embeded_down
+    },
+    embeder,
+    top_n_by_max_distance=31, 
+    top_n_by_mean_distance=9
+)
+# classifier = util.PoseClassifierByML('./dist/model/model.h5', embeder, {"up": 1, "down": 0})
 
-# classifier = util.PoseClassifierByKNN(
-#     {
-#         'up': embeded_up,
-#         'down': embeded_down
-#     },
-#     embeder,
-#     top_n_by_max_distance=100, 
-#     top_n_by_mean_distance=31
-# )
+visualizer = util.PoseClassificationVisualizer("up")
+smooth = util.EMADictSmoothing(window_size=9)
+counter = util.RepetitionCounter('up', exit_threshold=3)
 
-classifier = util.PoseClassifierByML('./model.h5', embeder)
-
-cap = cv.VideoCapture('./data/test/test3.mp4')
+cap = cv.VideoCapture('./data/test/test.mp4')
 pose = mp_pose.Pose(model_complexity=1,
                     static_image_mode=False)
 
@@ -52,13 +54,17 @@ while True:
             connections=mp_pose.POSE_CONNECTIONS
         )
         t = time.time()
-        classification = classifier(pose_world_landmarks) # 분류가 완료된 dict
-        print((time.time() - t) * 1000)
+        classification = smooth(classifier(pose_world_landmarks)) # 분류가 완료된 dict
+        # print((time.time() - t) * 1000)
         currentState, maxValue = '', -float('inf') # 현재 상태(up, down)를 저장할 변수, 그 상태의 값
         for key, value in classification.items():
             if value > maxValue:
                 currentState = key
                 maxValue = value
-        cv.putText(output_frame, currentState, (50, 350), cv.FONT_HERSHEY_PLAIN, 10, (0, 0, 255), 10, cv.LINE_AA)
-        cv.imshow('ui', output_frame)
-    key = cv.waitKey(20)
+
+        count = counter(classification)
+        vis = visualizer(output_frame, classification, classification, count)
+        
+        # cv.putText(output_frame, currentState, (50, 350), cv.FONT_HERSHEY_PLAIN, 10, (0, 0, 255), 10, cv.LINE_AA)
+        cv.imshow('ui', np.array(vis))
+    key = cv.waitKey(1)

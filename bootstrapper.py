@@ -15,8 +15,8 @@ args = parser.parse_args()
 args.filename = args.filename.name
 
 bootstrapper = util.Bootstrapper(mp_pose.Pose(            
-    model_complexity=args.complexity,
+    model_complexity=1,
     static_image_mode=True))
-up = bootstrapper('./data/test/up.mp4')
+up = bootstrapper(args.filename)
 csv_saver = util.CSVSaver()
 csv_saver(os.path.splitext(args.filename)[0], up)
